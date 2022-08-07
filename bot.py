@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import telebot, sqlite3
 from telebot import types
 
@@ -7,6 +9,37 @@ DB = None
 BOT = telebot.TeleBot(TOKEN)
 ADMIN_ID = [927060137, 304440895]
 
+def enter_date_step(message):
+    try:
+        last_date = datetime.strptime(message.text, "%d.%m.%Y %H:%M").timestamp()
+        cur = DB.cursor()
+        cur.execute("""UPDATE chats SET 
+           last_send_date=?
+           WHERE chat_id=?""", (last_date, message.chat.id))
+        DB.commit()
+        BOT.send_message(chat_id=message.chat.id,
+                         text="Прикрепите картинку и добавтье подпись")
+        BOT.register_next_step_handler(message, enter_img_txt_step)
+    except ValueError:
+        BOT.register_next_step_handler(message, enter_date_step)
+        BOT.send_message(chat_id=message.chat.id,
+                         text="Неверная дата. Введите дату в формате: 31.12.2022 22:00")
+
+def enter_img_txt_step(message):
+    cur = DB.cursor()
+    cur.execute("""SELECT last_send_date from chats WHERE chat_id=? 
+               """, (message.chat.id,))
+    last_date = cur.fetchone()[0]
+    if message.text == None:
+        cur.execute("""INSERT INTO messages(message_text, message_photo) 
+               VALUES(?, ?);""", (message.caption, message.photo[-1].file_id))
+        DB.commit()
+    else:
+        cur.execute("""INSERT INTO message(message_text) 
+                       VALUES(?);""", (message.text,))
+        DB.commit()
+
+
 
 
 def send_all(message):
@@ -15,6 +48,7 @@ def send_all(message):
         sqlite_select_query = """SELECT * from chats"""
         cursor.execute(sqlite_select_query)
         records = cursor.fetchall()
+
         for user in records:
             send_all_message = message.text
             BOT.send_message(chat_id=user[0], text=send_all_message)
@@ -37,6 +71,7 @@ def start(message):
 
 @BOT.message_handler(commands=['menu'])
 def menu(message):
+    insert_chat(message.chat.id, message.from_user.username)
     bot_menu_message = f'Для того, чтобы получить кэшбэк до 100%, нужно оставить максимально подробный отзыв с тремя ' \
                        f'фотографиями и прислать скриншот менеджеру в @mirsee \n' \
                        f'Чтобы получать постоянный кэшбэк от всех покупок до 10% нужно зарегистрироваться по ссылке ' \
@@ -104,9 +139,9 @@ def process_step(message):
                               'Для возврата в меню нажми /menu',
                          reply_markup=markup)
     elif message.text == 'Создать рассылку':
-        BOT.register_next_step_handler(message, send_all)
+        BOT.register_next_step_handler(message, enter_date_step)
         BOT.send_message(chat_id=message.chat.id,
-                         text='Введите текст рассылки',
+                         text='Введите дату и время. В формате: 31.12.2022 22:00',
                          reply_markup=markup)
     else:
         BOT.send_message(chat_id=message.chat.id,
@@ -121,8 +156,14 @@ def main():
     cur = DB.cursor()
     cur.execute("""CREATE TABLE IF NOT EXISTS chats(
        chat_id INT PRIMARY KEY,
-       user_name TEXT);
+       user_name TEXT,
+       last_send_date timestamp);
     """)
+    cur.execute("""CREATE TABLE IF NOT EXISTS messages(
+           message_id INTEGER PRIMARY KEY,
+           message_text TEXT,
+           message_photo TEXT);
+        """)
     DB.commit()
 
     BOT.polling(none_stop=True)
@@ -130,9 +171,13 @@ def main():
 
 def insert_chat(chat_id: int, user_name: str):
     cur = DB.cursor()
-    cur.execute("""INSERT INTO chats(chat_id, user_name) 
-       VALUES(?, ?);""", (chat_id, user_name))
-    DB.commit()
+    cur.execute("""SELECT chat_id from chats WHERE chat_id=?; """, (chat_id,))
+    users = cur.fetchall()
+    print(users)
+    if not users:
+        cur.execute("""INSERT INTO chats(chat_id, user_name) 
+           VALUES(?, ?);""", (chat_id, user_name))
+        DB.commit()
 
 
 if __name__ == "__main__":
