@@ -1,7 +1,12 @@
 from datetime import datetime
-
+from tzlocal import get_localzone
 import telebot, sqlite3
 from telebot import types
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+from apscheduler.executors.pool import ThreadPoolExecutor
+from pytz import utc
+
 
 TOKEN = '5542237999:AAG1Oy8z08aEHyieytR2cL2eu22fpZ8mCag'
 
@@ -30,17 +35,34 @@ def enter_img_txt_step(message):
     cur.execute("""SELECT last_send_date from chats WHERE chat_id=? 
                """, (message.chat.id,))
     last_date = cur.fetchone()[0]
+
     if message.text == None:
         cur.execute("""INSERT INTO messages(message_text, message_photo) 
                VALUES(?, ?);""", (message.caption, message.photo[-1].file_id))
-        DB.commit()
     else:
-        cur.execute("""INSERT INTO message(message_text) 
-                       VALUES(?);""", (message.text,))
-        DB.commit()
+        cur.execute("""INSERT INTO messages(message_text) 
+                   VALUES(?);""", (message.text,))
+
+    DB.commit()
+    scheduled_message(message, last_date)
+    BOT.send_message(chat_id=message.chat.id,
+                     text="Сообщение создано. Для возврата в основное меню - /menu")
+
+
+def scheduled_message(message, last_date):
+    date_scheduler = datetime.fromtimestamp(last_date)
+    tz = get_localzone()  # local timezone
+    print(tz)
+    scheduler.add_job(sched, 'date', run_date=date_scheduler, timezone=tz )
 
 
 
+def sched():
+    print('Ураа')
+    cursor = DB.cursor()
+    sqlite_select_query = """SELECT * from messages WHERE message_id=?"""
+    cursor.execute(sqlite_select_query)
+    records = cursor.fetchall()
 
 def send_all(message):
     if message.chat.id in ADMIN_ID:
@@ -69,6 +91,26 @@ def start(message):
     BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
 
 
+@BOT.message_handler(commands=['mailing'])
+def mailing(message):
+
+
+    bot_menu_message = f'Для того, чтобы получить кэшбэк до 100%, нужно оставить максимально подробный отзыв с тремя ' \
+                       f'фотографиями и прислать скриншот менеджеру в @mirsee \n' \
+                       f'Чтобы получать постоянный кэшбэк от всех покупок до 10% нужно зарегистрироваться по ссылке ' \
+                       f'ниже 👇🏻👇🏻👇🏻'
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+    btn1 = types.KeyboardButton('🎁 Кэшбэк за отзыв до 100%')
+    btn2 = types.KeyboardButton('💵 Кэшбэк от всех покупок 3-10%')
+    btn3 = types.KeyboardButton('📲 Канал с анонсами акций')
+    btn4 = types.KeyboardButton('💳 Наши магазины')
+    btn5 = types.KeyboardButton('Создать рассылку')
+    btn6 = types.KeyboardButton('Список ваших рассылок')
+    markup.add(btn1, btn2, btn3, btn4, btn5, btn6)
+    BOT.register_next_step_handler(message, process_step)
+    BOT.send_message(chat_id=message.chat.id, text=bot_menu_message, reply_markup=markup)
+
+
 @BOT.message_handler(commands=['menu'])
 def menu(message):
     insert_chat(message.chat.id, message.from_user.username)
@@ -82,7 +124,8 @@ def menu(message):
     btn3 = types.KeyboardButton('📲 Канал с анонсами акций')
     btn4 = types.KeyboardButton('💳 Наши магазины')
     btn5 = types.KeyboardButton('Создать рассылку')
-    markup.add(btn1, btn2, btn3, btn4, btn5)
+    btn6 = types.KeyboardButton('Список ваших рассылок')
+    markup.add(btn1, btn2, btn3, btn4, btn5, btn6)
     BOT.register_next_step_handler(message, process_step)
     BOT.send_message(chat_id=message.chat.id, text=bot_menu_message, reply_markup=markup)
 
@@ -143,6 +186,17 @@ def process_step(message):
         BOT.send_message(chat_id=message.chat.id,
                          text='Введите дату и время. В формате: 31.12.2022 22:00',
                          reply_markup=markup)
+    elif message.text == 'Список ваших рассылок':
+        cur = DB.cursor()
+        cur.execute("""SELECT last_send_date from chats WHERE chat_id=? 
+                       """, (message.chat.id,))
+        last_date = cur.fetchone()[0]
+        date_time = datetime.fromtimestamp(last_date)
+        BOT.send_message(chat_id=message.chat.id,
+                         text=
+                         f'{i[0][:15]}..., дата отправки: {date_time}',
+                         reply_markup=markup)
+
     else:
         BOT.send_message(chat_id=message.chat.id,
                          text='Я не понимаю Вас 🤷🏻‍♂️\n\n'
@@ -166,6 +220,21 @@ def main():
         """)
     DB.commit()
 
+    global scheduler
+    jobstores = {
+        #'mongo': MongoDBJobStore(),
+        'default': SQLAlchemyJobStore(url='sqlite:///sqlite_bot.db')
+    }
+    executors = {
+        'default': ThreadPoolExecutor(20),
+        #'processpool': ProcessPoolExecutor(5)
+    }
+    job_defaults = {
+        'coalesce': False,
+        'max_instances': 3
+    }
+    scheduler = BackgroundScheduler(jobstores=jobstores, executors=executors, job_defaults=job_defaults, timezone=utc)
+    scheduler.start()
     BOT.polling(none_stop=True)
 
 
