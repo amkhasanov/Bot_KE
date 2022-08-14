@@ -136,8 +136,7 @@ def menu(message):
     btn3 = types.KeyboardButton('📲 Канал с анонсами акций')
     btn4 = types.KeyboardButton('💳 Наши магазины')
     btn5 = types.KeyboardButton('Создать рассылку')
-    btn6 = types.KeyboardButton('Список ваших рассылок')
-    markup.add(btn1, btn2, btn3, btn4, btn5, btn6)
+    markup.add(btn1, btn2, btn3, btn4, btn5)
     BOT.register_next_step_handler(message, process_step)
     BOT.send_message(chat_id=message.chat.id, text=bot_menu_message, reply_markup=markup)
 
@@ -188,17 +187,6 @@ def process_step(message):
         BOT.send_message(chat_id=message.chat.id,
                          text='Введите дату и время. Введите дату в формате по МСК: 31.12.2022 22:00',
                          reply_markup=markup)
-    elif message.text == 'Список ваших рассылок':
-        cur = DB.cursor()
-        cur.execute("""SELECT last_send_date from chats WHERE chat_id=? 
-                       """, (message.chat.id,))
-        last_date = cur.fetchone()[0]
-        date_time = datetime.fromtimestamp(last_date)
-        BOT.send_message(chat_id=message.chat.id,
-                         text=
-                         f'{i[0][:15]}..., дата отправки: {date_time}',
-                         reply_markup=markup)
-
     else:
         BOT.send_message(chat_id=message.chat.id,
                          text='Я не понимаю Вас 🤷🏻‍♂️\n\n'
