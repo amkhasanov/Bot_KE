@@ -6,7 +6,7 @@ import telebot
 from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
-from pytz import utc
+from pytz import utc, timezone
 from telebot import types
 from tzlocal import get_localzone
 
@@ -31,7 +31,7 @@ def enter_date_step(message):
     except ValueError:
         BOT.register_next_step_handler(message, enter_date_step)
         BOT.send_message(chat_id=message.chat.id,
-                         text="Неверная дата. Введите дату в формате: 31.12.2022 22:00")
+                         text="Неверная дата. Введите дату в формате по МСК: 31.12.2022 22:00")
 
 
 def enter_img_txt_step(message):
@@ -54,7 +54,7 @@ def enter_img_txt_step(message):
 
 
 def scheduled_message(message, last_date):
-    date_scheduler = datetime.fromtimestamp(last_date)
+    date_scheduler = datetime.fromtimestamp(last_date, tz=timezone('Europe/Moscow'))
     tz = get_localzone()  # local timezone
     text = message.text
     caption = message.caption
