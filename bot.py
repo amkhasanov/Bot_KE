@@ -186,7 +186,7 @@ def process_step(message):
     elif message.text == 'Создать рассылку':
         BOT.register_next_step_handler(message, enter_date_step)
         BOT.send_message(chat_id=message.chat.id,
-                         text='Введите дату и время. В формате: 31.12.2022 22:00',
+                         text='Введите дату и время. Введите дату в формате по МСК: 31.12.2022 22:00',
                          reply_markup=markup)
     elif message.text == 'Список ваших рассылок':
         cur = DB.cursor()
