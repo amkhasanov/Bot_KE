@@ -1,14 +1,12 @@
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import logging
 
 import telebot
 from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
-from pytz import utc, timezone
 from telebot import types
-from tzlocal import get_localzone
 
 TOKEN = '5542237999:AAG1Oy8z08aEHyieytR2cL2eu22fpZ8mCag'
 
@@ -19,7 +17,7 @@ ADMIN_ID = [927060137, 304440895]
 
 def enter_date_step(message):
     try:
-        last_date = datetime.strptime(message.text, "%d.%m.%Y %H:%M").replace(tzinfo=timezone('Europe/Moscow')).timestamp()
+        last_date = datetime.strptime(message.text, "%d.%m.%Y %H:%M").replace(tzinfo=timezone(timedelta(hours=3))).timestamp()
         cur = DB.cursor()
         cur.execute("""UPDATE chats SET 
            last_send_date=?
@@ -55,11 +53,10 @@ def enter_img_txt_step(message):
 
 def scheduled_message(message, last_date):
     date_scheduler = datetime.fromtimestamp(last_date)
-    tz = get_localzone()  # local timezone
     text = message.text
     caption = message.caption
     photo = message.photo[-1].file_id if text is None else None
-    scheduler.add_job(sched, 'date', run_date=date_scheduler, timezone=tz,
+    scheduler.add_job(sched, 'date', run_date=date_scheduler,
                       args=[text, caption, photo])
     logging.info(f"Задача добавлена в шедулер дата:{date_scheduler}")
 
