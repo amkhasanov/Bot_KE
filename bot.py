@@ -9,7 +9,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from pytz import utc
 from telebot import types
 
-from .settings import TOKEN, ADMIN_ID
+from settings import TOKEN, ADMIN_ID
 
 DB = None
 BOT = telebot.TeleBot(TOKEN)
