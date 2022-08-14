@@ -37,14 +37,15 @@ def enter_img_txt_step(message):
     last_date = cur.fetchone()[0]
 
     if message.text == None:
-        cur.execute("""INSERT INTO messages(message_text, message_photo) 
-               VALUES(?, ?);""", (message.caption, message.photo[-1].file_id))
+        cur.execute("""INSERT INTO messages(message_id, message_text, message_photo) 
+               VALUES(?, ?, ?);""", (message.message_id, message.caption, message.photo[-1].file_id))
     else:
-        cur.execute("""INSERT INTO messages(message_text) 
-                   VALUES(?);""", (message.text,))
+        cur.execute("""INSERT INTO messages(message_id, message_text) 
+                   VALUES(?, ?);""", (message.message_id, message.text,))
 
     DB.commit()
     scheduled_message(message, last_date)
+    print(message.message_id)
     BOT.send_message(chat_id=message.chat.id,
                      text="Сообщение создано. Для возврата в основное меню - /menu")
 
@@ -53,16 +54,33 @@ def scheduled_message(message, last_date):
     date_scheduler = datetime.fromtimestamp(last_date)
     tz = get_localzone()  # local timezone
     print(tz)
-    scheduler.add_job(sched, 'date', run_date=date_scheduler, timezone=tz )
+    text = message.text
+    caption = message.caption
+    photo = message.photo[-1].file_id
+    scheduler.add_job(sched, 'date', run_date=date_scheduler, timezone=tz,
+                      args=[text, caption, photo])
 
 
-
-def sched():
+def sched(text=None, caption=None, photo=None):
     print('Ураа')
     cursor = DB.cursor()
-    sqlite_select_query = """SELECT * from messages WHERE message_id=?"""
+    sqlite_select_query = """SELECT * from chats"""
     cursor.execute(sqlite_select_query)
     records = cursor.fetchall()
+    print(records)
+    if text:
+
+        for user in records:
+            send_all_message = text
+            BOT.send_message(chat_id=user[0], text=send_all_message)
+    else:
+        for user in records:
+            send_all_message = text
+            BOT.send_photo(chat_id=user[0],
+                           photo=photo, caption=caption)
+
+
+
 
 def send_all(message):
     if message.chat.id in ADMIN_ID:
