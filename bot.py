@@ -58,7 +58,7 @@ def scheduled_message(message, last_date):
     tz = get_localzone()  # local timezone
     text = message.text
     caption = message.caption
-    photo = message.photo[-1].file_id
+    photo = message.photo[-1].file_id if text is None else None
     scheduler.add_job(sched, 'date', run_date=date_scheduler, timezone=tz,
                       args=[text, caption, photo])
     logging.info(f"Задача добавлена в шедулер дата:{date_scheduler}")
@@ -209,7 +209,7 @@ def process_step(message):
 
 
 def main():
-    logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
+    logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
     global DB
     DB = sqlite3.connect('sqlite_bot.db', check_same_thread=False)
     cur = DB.cursor()
