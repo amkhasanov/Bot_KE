@@ -19,7 +19,7 @@ ADMIN_ID = [927060137, 304440895]
 
 def enter_date_step(message):
     try:
-        last_date = datetime.strptime(message.text, "%d.%m.%Y %H:%M").timestamp()
+        last_date = datetime.strptime(message.text, "%d.%m.%Y %H:%M").replace(tzinfo=timezone('Europe/Moscow')).timestamp()
         cur = DB.cursor()
         cur.execute("""UPDATE chats SET 
            last_send_date=?
@@ -54,7 +54,7 @@ def enter_img_txt_step(message):
 
 
 def scheduled_message(message, last_date):
-    date_scheduler = datetime.fromtimestamp(last_date, tz=timezone('Europe/Moscow'))
+    date_scheduler = datetime.fromtimestamp(last_date)
     tz = get_localzone()  # local timezone
     text = message.text
     caption = message.caption
