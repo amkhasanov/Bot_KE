@@ -104,24 +104,6 @@ def start(message):
     BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
 
 
-@BOT.message_handler(commands=['mailing'])
-def mailing(message):
-    bot_menu_message = f'Для того, чтобы получить кэшбэк до 100%, нужно оставить максимально подробный отзыв с тремя ' \
-                       f'фотографиями и прислать скриншот менеджеру в @mirsee \n' \
-                       f'Чтобы получать постоянный кэшбэк от всех покупок до 10% нужно зарегистрироваться по ссылке ' \
-                       f'ниже 👇🏻👇🏻👇🏻'
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
-    btn1 = types.KeyboardButton('🎁 Кэшбэк за отзыв до 100%')
-    btn2 = types.KeyboardButton('💵 Кэшбэк от всех покупок 3-10%')
-    btn3 = types.KeyboardButton('📲 Канал с анонсами акций')
-    btn4 = types.KeyboardButton('💳 Наши магазины')
-    btn5 = types.KeyboardButton('Создать рассылку')
-    btn6 = types.KeyboardButton('Список ваших рассылок')
-    markup.add(btn1, btn2, btn3, btn4, btn5, btn6)
-    BOT.register_next_step_handler(message, process_step)
-    BOT.send_message(chat_id=message.chat.id, text=bot_menu_message, reply_markup=markup)
-
-
 @BOT.message_handler(commands=['menu'])
 def menu(message):
     insert_chat(message.chat.id, message.from_user.username)
@@ -134,8 +116,10 @@ def menu(message):
     btn2 = types.KeyboardButton('💵 Кэшбэк от всех покупок 3-10%')
     btn3 = types.KeyboardButton('📲 Канал с анонсами акций')
     btn4 = types.KeyboardButton('💳 Наши магазины')
-    btn5 = types.KeyboardButton('Создать рассылку')
-    markup.add(btn1, btn2, btn3, btn4, btn5)
+    markup.add(btn1, btn2, btn3, btn4)
+    if message.chat.id in ADMIN_ID:
+        btn5 = types.KeyboardButton('Создать рассылку')
+        markup.add(btn5)
     BOT.register_next_step_handler(message, process_step)
     BOT.send_message(chat_id=message.chat.id, text=bot_menu_message, reply_markup=markup)
 
@@ -181,7 +165,7 @@ def process_step(message):
                               'кулисами нашей работы \n\n'
                               'Для возврата в меню нажми /menu',
                          reply_markup=markup)
-    elif message.text == 'Создать рассылку':
+    elif message.text == 'Создать рассылку' and message.chat.id in ADMIN_ID:
         BOT.register_next_step_handler(message, enter_date_step)
         BOT.send_message(chat_id=message.chat.id,
                          text='Введите дату и время. Введите дату в формате по МСК: 31.12.2022 22:00',
