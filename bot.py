@@ -1,18 +1,21 @@
+import sqlite3
 from datetime import datetime
-from tzlocal import get_localzone
-import telebot, sqlite3
-from telebot import types
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
-from apscheduler.executors.pool import ThreadPoolExecutor
-from pytz import utc
+import logging
 
+import telebot
+from apscheduler.executors.pool import ThreadPoolExecutor
+from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+from apscheduler.schedulers.background import BackgroundScheduler
+from pytz import utc
+from telebot import types
+from tzlocal import get_localzone
 
 TOKEN = '5542237999:AAG1Oy8z08aEHyieytR2cL2eu22fpZ8mCag'
 
 DB = None
 BOT = telebot.TeleBot(TOKEN)
 ADMIN_ID = [927060137, 304440895]
+
 
 def enter_date_step(message):
     try:
@@ -30,6 +33,7 @@ def enter_date_step(message):
         BOT.send_message(chat_id=message.chat.id,
                          text="Неверная дата. Введите дату в формате: 31.12.2022 22:00")
 
+
 def enter_img_txt_step(message):
     cur = DB.cursor()
     cur.execute("""SELECT last_send_date from chats WHERE chat_id=? 
@@ -45,7 +49,6 @@ def enter_img_txt_step(message):
 
     DB.commit()
     scheduled_message(message, last_date)
-    print(message.message_id)
     BOT.send_message(chat_id=message.chat.id,
                      text="Сообщение создано. Для возврата в основное меню - /menu")
 
@@ -53,23 +56,21 @@ def enter_img_txt_step(message):
 def scheduled_message(message, last_date):
     date_scheduler = datetime.fromtimestamp(last_date)
     tz = get_localzone()  # local timezone
-    print(tz)
     text = message.text
     caption = message.caption
     photo = message.photo[-1].file_id
     scheduler.add_job(sched, 'date', run_date=date_scheduler, timezone=tz,
                       args=[text, caption, photo])
+    logging.info(f"Задача добавлена в шедулер дата:{date_scheduler}")
 
 
 def sched(text=None, caption=None, photo=None):
-    print('Ураа')
+    logging.info(f"Выполнение запланированной задачи")
     cursor = DB.cursor()
     sqlite_select_query = """SELECT * from chats"""
     cursor.execute(sqlite_select_query)
     records = cursor.fetchall()
-    print(records)
     if text:
-
         for user in records:
             send_all_message = text
             BOT.send_message(chat_id=user[0], text=send_all_message)
@@ -78,8 +79,6 @@ def sched(text=None, caption=None, photo=None):
             send_all_message = text
             BOT.send_photo(chat_id=user[0],
                            photo=photo, caption=caption)
-
-
 
 
 def send_all(message):
@@ -93,7 +92,6 @@ def send_all(message):
             send_all_message = message.text
             BOT.send_message(chat_id=user[0], text=send_all_message)
         BOT.send_message(chat_id=message.chat.id, text="Рассылка отправлена. Нажми /menu чтобы вернуться в Основное меню")
-
 
 
 @BOT.message_handler(commands=['start'])
@@ -111,8 +109,6 @@ def start(message):
 
 @BOT.message_handler(commands=['mailing'])
 def mailing(message):
-
-
     bot_menu_message = f'Для того, чтобы получить кэшбэк до 100%, нужно оставить максимально подробный отзыв с тремя ' \
                        f'фотографиями и прислать скриншот менеджеру в @mirsee \n' \
                        f'Чтобы получать постоянный кэшбэк от всех покупок до 10% нужно зарегистрироваться по ссылке ' \
@@ -174,16 +170,6 @@ def process_step(message):
                          reply_markup=markup)
         BOT.send_message(chat_id=message.chat.id,
                          text='Для возврата в меню нажми /menu')
-        # new_markup = types.InlineKeyboardMarkup(row_width=1)
-        # btn_link1 = types.InlineKeyboardButton('MIRSEE - магазин солнечных очков', url='https://kazanexpress.ru/mirsee')
-        # btn_link2 = types.InlineKeyboardButton('MIRSEE BIJOU - магазин бижутерии', url='https://kazanexpress.ru/mirsee-bijou')
-        # btn_link3 = types.InlineKeyboardButton('AKVILONIA - фитнес резинки', url='https://kazanexpress.ru/akvilonia')
-        # new_markup.add(btn_link1, btn_link2, btn_link3)
-        # BOT.send_message(chat_id=message.chat.id,
-        #                  text='👇🏻👇🏻👇🏻 Жми на кнопочки ниже и переходи в наши магазины, '
-        #                       'чтобы увидеть весь ассортимент, подобранный специально для тебя😉\n\n'
-        #                       'Или вернитесь в /menu .',
-        #                  reply_markup=new_markup)
     elif message.text == '🎁 Кэшбэк за отзыв до 100%':
         BOT.send_message(chat_id=message.chat.id,
                          text='1. Напиши максимально подробный отзыв с 3 хорошими фотографиями товара в использовании.\n'
@@ -223,6 +209,7 @@ def process_step(message):
 
 
 def main():
+    logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
     global DB
     DB = sqlite3.connect('sqlite_bot.db', check_same_thread=False)
     cur = DB.cursor()
@@ -240,12 +227,10 @@ def main():
 
     global scheduler
     jobstores = {
-        #'mongo': MongoDBJobStore(),
         'default': SQLAlchemyJobStore(url='sqlite:///sqlite_bot.db')
     }
     executors = {
         'default': ThreadPoolExecutor(20),
-        #'processpool': ProcessPoolExecutor(5)
     }
     job_defaults = {
         'coalesce': False,
@@ -253,6 +238,7 @@ def main():
     }
     scheduler = BackgroundScheduler(jobstores=jobstores, executors=executors, job_defaults=job_defaults, timezone=utc)
     scheduler.start()
+    logging.info("Бот запущен!")
     BOT.polling(none_stop=True)
 
 
