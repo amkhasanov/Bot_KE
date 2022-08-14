@@ -7,6 +7,7 @@ from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
 from telebot import types
+from pytz import utc
 
 TOKEN = '5542237999:AAG1Oy8z08aEHyieytR2cL2eu22fpZ8mCag'
 
