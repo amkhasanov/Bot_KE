@@ -104,6 +104,51 @@ def start(message):
     BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
 
 
+@BOT.message_handler(commands=['admin'])
+def admin(message):
+    if message.chat.id in ADMIN_ID:
+        bot_start_message = 'Введите ID-пользователя, которого необходимо добавить в "админы" \n' \
+                            'Для удаления админа,введите ID-пользователя пробел удалить.\n' \
+                            'Пример: 123456789 удалить  '
+        BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
+        BOT.register_next_step_handler(message, add_admin)
+    else:
+        bot_start_message = 'Вам не доступна данная команда. Для возврата в основное меню нажмите /menu '
+        BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
+
+
+def add_admin(message):
+    try:
+        int(message.text)
+    except ValueError:
+        bot_start_message = 'Введен некорректный ID. Для возврата в основное меню нажмите /menu '
+        BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
+        BOT.register_next_step_handler(message, admin)
+
+
+    admin_id_from_message = message.text.split()
+    if len(admin_id_from_message) == 1:
+
+        ADMIN_ID.append(int(message.text))
+        print(message.text, 'сообщ с айди')
+        print(ADMIN_ID)
+        bot_start_message = 'Пользователь добавлен в список "админов".\n' \
+                            'Для возврата в меню нажми /menu '
+        BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
+
+    elif len(admin_id_from_message) == 2:
+        try:
+            ADMIN_ID.remove(int(admin_id_from_message[0]))
+        except ValueError:
+            bot_start_message = 'Такого ID нет в списке админов. Для возврата в основное меню нажмите /menu '
+            BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
+            BOT.register_next_step_handler(message, admin)
+
+        bot_start_message = 'Пользователь удален из списка админов.\n' \
+                            'Для возврата в меню нажми /menu '
+        BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
+
+
 @BOT.message_handler(commands=['menu'])
 def menu(message):
     insert_chat(message.chat.id, message.from_user.username)
