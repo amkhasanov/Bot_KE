@@ -1,7 +1,6 @@
 import logging
 import sqlite3
 from datetime import datetime, timezone, timedelta
-
 import telebot
 from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
@@ -17,7 +16,8 @@ BOT = telebot.TeleBot(TOKEN)
 
 def enter_date_step(message):
     try:
-        last_date = datetime.strptime(message.text, "%d.%m.%Y %H:%M").replace(tzinfo=timezone(timedelta(hours=3))).timestamp()
+        last_date = datetime.strptime(message.text, "%d.%m.%Y %H:%M").replace(
+            tzinfo=timezone(timedelta(hours=3))).timestamp()
         cur = DB.cursor()
         cur.execute("""UPDATE chats SET 
            last_send_date=?
@@ -84,11 +84,11 @@ def send_all(message):
         sqlite_select_query = """SELECT * from chats"""
         cursor.execute(sqlite_select_query)
         records = cursor.fetchall()
-
         for user in records:
             send_all_message = message.text
             BOT.send_message(chat_id=user[0], text=send_all_message)
-        BOT.send_message(chat_id=message.chat.id, text="Рассылка отправлена. Нажми /menu чтобы вернуться в Основное меню")
+        BOT.send_message(chat_id=message.chat.id,
+                         text="Рассылка отправлена. Нажми /menu чтобы вернуться в Основное меню")
 
 
 @BOT.message_handler(commands=['start'])
@@ -123,30 +123,39 @@ def add_admin(message):
     except ValueError:
         bot_start_message = 'Введен некорректный ID. Для возврата в основное меню нажмите /menu '
         BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
-        BOT.register_next_step_handler(message, admin)
-
-
     admin_id_from_message = message.text.split()
     if len(admin_id_from_message) == 1:
-
-        ADMIN_ID.append(int(message.text))
-        print(message.text, 'сообщ с айди')
-        print(ADMIN_ID)
-        bot_start_message = 'Пользователь добавлен в список "админов".\n' \
-                            'Для возврата в меню нажми /menu '
-        BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
+        cur = DB.cursor()
+        cur.execute("""SELECT * FROM chats WHERE chat_id=?;""", (message.text,))
+        one_result = cur.fetchone()
+        if one_result == None:
+            bot_start_message = 'Такого пользователя нет в нашей базе.\n' \
+                                'Необходимо чтобы он запустил команду "start"\n' \
+                                'Для возврата в основное меню /menu'
+            BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
+        else:
+            cur = DB.cursor()
+            cur.execute("""UPDATE chats SET is_admin='1' WHERE chat_id=?;""", (int(message.text),))
+            DB.commit()
+            bot_start_message = 'Пользователь добавлен в список "админов".\n' \
+                                'Для возврата в меню нажми /menu '
+            BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
 
     elif len(admin_id_from_message) == 2:
-        try:
-            ADMIN_ID.remove(int(admin_id_from_message[0]))
-        except ValueError:
-            bot_start_message = 'Такого ID нет в списке админов. Для возврата в основное меню нажмите /menu '
+        cur = DB.cursor()
+        cur.execute("""SELECT * FROM chats WHERE chat_id=?;""", (int(admin_id_from_message[0]),))
+        one_result = cur.fetchone()
+        if one_result == None:
+            bot_start_message = 'Такого пользователя нет в нашей базе, либо введен неверный ID.\n' \
+                               'Для возврата в основное меню /menu'
             BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
-            BOT.register_next_step_handler(message, admin)
-
-        bot_start_message = 'Пользователь удален из списка админов.\n' \
-                            'Для возврата в меню нажми /menu '
-        BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
+        else:
+            cur = DB.cursor()
+            cur.execute("""UPDATE chats SET is_admin='0' WHERE chat_id=?;""", (int(admin_id_from_message[0]),))
+            DB.commit()
+            bot_start_message = 'Пользователь удален из списка админов.\n' \
+                                'Для возврата в меню нажми /menu '
+            BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
 
 
 @BOT.message_handler(commands=['menu'])
@@ -229,7 +238,9 @@ def main():
     cur.execute("""CREATE TABLE IF NOT EXISTS chats(
        chat_id INT PRIMARY KEY,
        user_name TEXT,
-       last_send_date timestamp);
+       last_send_date TIMESTAMP,
+       is_admin BOOLEAN default 0 check (is_admin in (0,1)),
+       subscription_date TIMESTAMP default (datetime('now', 'localtime')));
     """)
     cur.execute("""CREATE TABLE IF NOT EXISTS messages(
            message_id INTEGER PRIMARY KEY,
