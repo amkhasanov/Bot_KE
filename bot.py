@@ -8,10 +8,18 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from pytz import utc
 from telebot import types
 
-from settings import TOKEN, ADMIN_ID
+from settings import TOKEN
 
 DB = None
 BOT = telebot.TeleBot(TOKEN)
+
+def check_admin(message):
+    cur = DB.cursor()
+    cur.execute("""SELECT is_admin from chats WHERE chat_id=? 
+                   """, (message.chat.id,))
+    is_admin = cur.fetchone()
+    return is_admin
+
 
 
 def enter_date_step(message):
@@ -79,7 +87,7 @@ def sched(text=None, caption=None, photo=None):
 
 
 def send_all(message):
-    if message.chat.id in ADMIN_ID:
+    if check_admin(message)[0]:
         cursor = DB.cursor()
         sqlite_select_query = """SELECT * from chats"""
         cursor.execute(sqlite_select_query)
@@ -106,7 +114,8 @@ def start(message):
 
 @BOT.message_handler(commands=['admin'])
 def admin(message):
-    if message.chat.id in ADMIN_ID:
+    if check_admin(message)[0]:
+        print(check_admin(message)[0])
         bot_start_message = 'Введите ID-пользователя, которого необходимо добавить в "админы" \n' \
                             'Для удаления админа,введите ID-пользователя пробел удалить.\n' \
                             'Пример: 123456789 удалить  '
@@ -171,12 +180,16 @@ def menu(message):
     btn3 = types.KeyboardButton('📲 Телеграм Константина')
     btn4 = types.KeyboardButton('💳 Наши магазины')
     markup.add(btn1, btn2, btn3, btn4)
-    if message.chat.id in ADMIN_ID:
+
+    if check_admin(message)[0]:
         btn5 = types.KeyboardButton('Создать рассылку')
         markup.add(btn5)
+
+    if check_admin(message)[0]:
+        btn6 = types.KeyboardButton('Статистика')
+        markup.add(btn6)
     BOT.register_next_step_handler(message, process_step)
     BOT.send_message(chat_id=message.chat.id, text=bot_menu_message, reply_markup=markup)
-
 
 def process_step(message):
     markup = types.ReplyKeyboardRemove()
@@ -218,11 +231,58 @@ def process_step(message):
                               'Там всё просто и открыто о бизнесе и не только. \n\n'
                               'Для возврата в меню нажми /menu',
                          reply_markup=markup)
-    elif message.text == 'Создать рассылку' and message.chat.id in ADMIN_ID:
+    elif message.text == 'Создать рассылку' and check_admin(message)[0]:
         BOT.register_next_step_handler(message, enter_date_step)
         BOT.send_message(chat_id=message.chat.id,
                          text='Введите дату и время. Введите дату в формате по МСК: 31.12.2022 22:00',
                          reply_markup=markup)
+    elif message.text == 'Статистика' and check_admin(message)[0]:
+        BOT.register_next_step_handler(message, analytics)
+        cursor = DB.cursor()
+        all_rows = cursor.execute("""SELECT count(*) from chats;""").fetchall()
+        num_of_folowers = all_rows[0][0]
+
+        BOT.send_message(chat_id=message.chat.id,
+                         text=f'Количество подписчиков - {num_of_folowers}',
+                         reply_markup=markup)
+    else:
+        BOT.send_message(chat_id=message.chat.id,
+                         text='Я не понимаю Вас 🤷🏻‍♂️\n\n'
+                              'Перейди в /menu чтобы выбрать действие.',
+                         reply_markup=markup)
+
+@BOT.message_handler(commands=['analytics'])
+def analytics(message):
+    bot_analytics_message = f'Выберите нужный вам период'
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+    btn1 = types.KeyboardButton('За все время')
+    btn2 = types.KeyboardButton('За месяц')
+    btn3 = types.KeyboardButton('За неделю')
+    markup.add(btn1, btn2, btn3)
+    BOT.register_next_step_handler(message, analytics_button_step)
+    BOT.send_message(chat_id=message.chat.id, text=bot_analytics_message, reply_markup=markup)
+
+
+def analytics_button_step(message):
+    markup = types.ReplyKeyboardRemove()
+    if message.text == 'За все время':
+        BOT.send_message(chat_id=message.chat.id,
+                         text='количество подписчиков за все время и сколько из них читают',
+                         reply_markup=markup)
+        BOT.send_message(chat_id=message.chat.id,
+                         text='Для возврата в меню нажми /menu')
+    elif message.text == 'За месяц':
+        BOT.send_message(chat_id=message.chat.id,
+                         text='количество подписчиков за все месяй и сколько из них читают',
+                         reply_markup=markup)
+        BOT.send_message(chat_id=message.chat.id,
+                         text='Для возврата в меню нажми /menu')
+    elif message.text == 'За все неделю':
+        BOT.send_message(chat_id=message.chat.id,
+                         text='количество подписчиков за все неделю и сколько из них читают',
+                         reply_markup=markup)
+        BOT.send_message(chat_id=message.chat.id,
+                         text='Для возврата в меню нажми /menu')
     else:
         BOT.send_message(chat_id=message.chat.id,
                          text='Я не понимаю Вас 🤷🏻‍♂️\n\n'
