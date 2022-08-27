@@ -174,7 +174,7 @@ def menu(message):
                        f'фотографиями и прислать скриншот менеджеру в @mirsee \n' \
                        f'Чтобы получать постоянный кэшбэк от всех покупок до 10% нужно зарегистрироваться по ссылке ' \
                        f'ниже 👇🏻👇🏻👇🏻'
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     btn1 = types.KeyboardButton('🎁 Кэшбэк за отзыв до 100%')
     btn2 = types.KeyboardButton('💵 Кэшбэк от всех покупок 3-10%')
     btn3 = types.KeyboardButton('📲 Телеграм Константина')
@@ -184,10 +184,6 @@ def menu(message):
     if check_admin(message)[0]:
         btn5 = types.KeyboardButton('Создать рассылку')
         markup.add(btn5)
-
-    if check_admin(message)[0]:
-        btn6 = types.KeyboardButton('Статистика')
-        markup.add(btn6)
     BOT.register_next_step_handler(message, process_step)
     BOT.send_message(chat_id=message.chat.id, text=bot_menu_message, reply_markup=markup)
 
@@ -236,25 +232,17 @@ def process_step(message):
         BOT.send_message(chat_id=message.chat.id,
                          text='Введите дату и время. Введите дату в формате по МСК: 31.12.2022 22:00',
                          reply_markup=markup)
-    elif message.text == 'Статистика' and check_admin(message)[0]:
-        BOT.register_next_step_handler(message, analytics)
-        cursor = DB.cursor()
-        all_rows = cursor.execute("""SELECT count(*) from chats;""").fetchall()
-        num_of_folowers = all_rows[0][0]
-
-        BOT.send_message(chat_id=message.chat.id,
-                         text=f'Количество подписчиков - {num_of_folowers}',
-                         reply_markup=markup)
     else:
         BOT.send_message(chat_id=message.chat.id,
                          text='Я не понимаю Вас 🤷🏻‍♂️\n\n'
                               'Перейди в /menu чтобы выбрать действие.',
                          reply_markup=markup)
 
+
 @BOT.message_handler(commands=['analytics'])
 def analytics(message):
     bot_analytics_message = f'Выберите нужный вам период'
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
     btn1 = types.KeyboardButton('За все время')
     btn2 = types.KeyboardButton('За месяц')
     btn3 = types.KeyboardButton('За неделю')
@@ -266,20 +254,34 @@ def analytics(message):
 def analytics_button_step(message):
     markup = types.ReplyKeyboardRemove()
     if message.text == 'За все время':
+        cursor = DB.cursor()
+        all_subscribers = cursor.execute("""SELECT count(*) from chats;""").fetchall()
+        num_of_subscribers = all_subscribers[0][0]
         BOT.send_message(chat_id=message.chat.id,
-                         text='количество подписчиков за все время и сколько из них читают',
+                         text=f'Количество подписчиков - {num_of_subscribers}.',
                          reply_markup=markup)
         BOT.send_message(chat_id=message.chat.id,
                          text='Для возврата в меню нажми /menu')
     elif message.text == 'За месяц':
+        cursor = DB.cursor()
+        month_subscribers = cursor.execute(
+            """SELECT count(*) from chats WHERE subscription_date >= date('now', '-30 day');"""
+        ).fetchall()
+        num_of_month_subscribers = month_subscribers[0][0]
+
         BOT.send_message(chat_id=message.chat.id,
-                         text='количество подписчиков за все месяй и сколько из них читают',
+                         text=f'количество подписчиков за месяц {num_of_month_subscribers}.',
                          reply_markup=markup)
         BOT.send_message(chat_id=message.chat.id,
                          text='Для возврата в меню нажми /menu')
-    elif message.text == 'За все неделю':
+    elif message.text == 'За неделю':
+        cursor = DB.cursor()
+        week_subscribers = cursor.execute(
+            """SELECT count(*) from chats WHERE subscription_date >= date('now', '-60 day');"""
+        ).fetchall()
+        num_of_week_subscribers = week_subscribers[0][0]
         BOT.send_message(chat_id=message.chat.id,
-                         text='количество подписчиков за все неделю и сколько из них читают',
+                         text=f'Количество подписчиков за неделю {num_of_week_subscribers}.',
                          reply_markup=markup)
         BOT.send_message(chat_id=message.chat.id,
                          text='Для возврата в меню нажми /menu')
