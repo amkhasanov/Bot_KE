@@ -132,6 +132,7 @@ def add_admin(message):
     except ValueError:
         bot_start_message = 'Введен некорректный ID. Для возврата в основное меню нажмите /menu '
         BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
+        return
     admin_id_from_message = message.text.split()
     print(admin_id_from_message, 'id из сообщения после try/exc')
     if len(admin_id_from_message) == 1:
