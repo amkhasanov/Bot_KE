@@ -13,6 +13,7 @@ from settings import TOKEN
 DB = None
 BOT = telebot.TeleBot(TOKEN)
 
+
 def check_admin(message):
     cur = DB.cursor()
     cur.execute("""SELECT is_admin from chats WHERE chat_id=? 
@@ -81,7 +82,6 @@ def sched(text=None, caption=None, photo=None):
             BOT.send_message(chat_id=user[0], text=send_all_message)
     else:
         for user in records:
-            send_all_message = text
             BOT.send_photo(chat_id=user[0],
                            photo=photo, caption=caption)
 
@@ -133,6 +133,7 @@ def add_admin(message):
         bot_start_message = 'Введен некорректный ID. Для возврата в основное меню нажмите /menu '
         BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
     admin_id_from_message = message.text.split()
+    print(admin_id_from_message, 'id из сообщения после try/exc')
     if len(admin_id_from_message) == 1:
         cur = DB.cursor()
         cur.execute("""SELECT * FROM chats WHERE chat_id=?;""", (message.text,))
@@ -277,7 +278,7 @@ def analytics_button_step(message):
     elif message.text == 'За неделю':
         cursor = DB.cursor()
         week_subscribers = cursor.execute(
-            """SELECT count(*) from chats WHERE subscription_date >= date('now', '-60 day');"""
+            """SELECT count(*) from chats WHERE subscription_date >= date('now', '-7 day');"""
         ).fetchall()
         num_of_week_subscribers = week_subscribers[0][0]
         BOT.send_message(chat_id=message.chat.id,
@@ -295,7 +296,7 @@ def analytics_button_step(message):
 def main():
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
     global DB
-    DB = sqlite3.connect('sqlite_bot.db', check_same_thread=False)
+    DB = sqlite3.connect('sqlite_bot_serv.db', check_same_thread=False)
     cur = DB.cursor()
     cur.execute("""CREATE TABLE IF NOT EXISTS chats(
        chat_id INT PRIMARY KEY,
@@ -309,6 +310,11 @@ def main():
            message_text TEXT,
            message_photo TEXT);
         """)
+    #cur.execute("""ALTER TABLE IF NOT EXIST ADD COLUMN is_admin BOOLEAN default 0 check (is_admin in (0,1))""")
+    #try:
+     #   # Добавить новый столбец в базу данных
+      #  add_column = '''ALTER TABLE summary ADD COLUMN freq'''
+
     DB.commit()
 
     global scheduler
