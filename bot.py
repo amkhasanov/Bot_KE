@@ -306,7 +306,7 @@ def analytics_button_step(message):
 def main():
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
     global DB
-    DB = sqlite3.connect('sqlite_bot_copy.db', check_same_thread=False)
+    DB = sqlite3.connect(path_to_db, check_same_thread=False)
     cur = DB.cursor()
     cur.execute("""CREATE TABLE IF NOT EXISTS chats(
        chat_id INT PRIMARY KEY,
