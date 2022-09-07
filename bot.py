@@ -8,7 +8,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from pytz import utc
 from telebot import types
 
-from settings import TOKEN
+from settings import TOKEN, path_to_db
 
 DB = None
 BOT = telebot.TeleBot(TOKEN)
@@ -24,21 +24,25 @@ def check_admin(message):
 
 
 def enter_date_step(message):
-    try:
-        last_date = datetime.strptime(message.text, "%d.%m.%Y %H:%M").replace(
-            tzinfo=timezone(timedelta(hours=3))).timestamp()
-        cur = DB.cursor()
-        cur.execute("""UPDATE chats SET 
-           last_send_date=?
-           WHERE chat_id=?""", (last_date, message.chat.id))
-        DB.commit()
-        BOT.send_message(chat_id=message.chat.id,
-                         text="Прикрепите картинку и добавтье подпись")
-        BOT.register_next_step_handler(message, enter_img_txt_step)
-    except ValueError:
-        BOT.register_next_step_handler(message, enter_date_step)
-        BOT.send_message(chat_id=message.chat.id,
-                         text="Неверная дата. Введите дату в формате по МСК: 31.12.2022 22:00")
+    if message.text == '/menu':
+        menu(message)
+    else:
+        try:
+            last_date = datetime.strptime(message.text, "%d.%m.%Y %H:%M").replace(
+                tzinfo=timezone(timedelta(hours=3))).timestamp()
+            cur = DB.cursor()
+            cur.execute("""UPDATE chats SET 
+               last_send_date=?
+               WHERE chat_id=?""", (last_date, message.chat.id))
+            DB.commit()
+            BOT.send_message(chat_id=message.chat.id,
+                             text="Прикрепите картинку и добавтье подпись")
+            BOT.register_next_step_handler(message, enter_img_txt_step)
+        except ValueError:
+            BOT.register_next_step_handler(message, enter_date_step)
+            BOT.send_message(chat_id=message.chat.id,
+                             text="Неверная дата. Введите дату в формате по МСК: 31.12.2022 22:00 \n"
+                                  "'Перейти в /menu'")
 
 
 def enter_img_txt_step(message):
@@ -115,7 +119,6 @@ def start(message):
 @BOT.message_handler(commands=['admin'])
 def admin(message):
     if check_admin(message)[0]:
-        print(check_admin(message)[0])
         bot_start_message = 'Введите ID-пользователя, которого необходимо добавить в "админы" \n' \
                             'Для удаления админа,введите ID-пользователя пробел удалить.\n' \
                             'Пример: 123456789 удалить  '
@@ -127,15 +130,14 @@ def admin(message):
 
 
 def add_admin(message):
-    try:
-        int(message.text)
-    except ValueError:
-        bot_start_message = 'Введен некорректный ID. Для возврата в основное меню нажмите /menu '
-        BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
-        return
     admin_id_from_message = message.text.split()
-    print(admin_id_from_message, 'id из сообщения после try/exc')
     if len(admin_id_from_message) == 1:
+        try:
+            int(admin_id_from_message[0])
+        except ValueError:
+            bot_start_message = 'Введен некорректный ID. Для возврата в основное меню нажмите /menu '
+            BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
+            return
         cur = DB.cursor()
         cur.execute("""SELECT * FROM chats WHERE chat_id=?;""", (message.text,))
         one_result = cur.fetchone()
@@ -153,6 +155,12 @@ def add_admin(message):
             BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
 
     elif len(admin_id_from_message) == 2:
+        try:
+            int(admin_id_from_message[0])
+        except ValueError:
+            bot_start_message = 'Введен некорректный ID. Для возврата в основное меню нажмите /menu '
+            BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
+            return
         cur = DB.cursor()
         cur.execute("""SELECT * FROM chats WHERE chat_id=?;""", (int(admin_id_from_message[0]),))
         one_result = cur.fetchone()
@@ -232,7 +240,8 @@ def process_step(message):
     elif message.text == 'Создать рассылку' and check_admin(message)[0]:
         BOT.register_next_step_handler(message, enter_date_step)
         BOT.send_message(chat_id=message.chat.id,
-                         text='Введите дату и время. Введите дату в формате по МСК: 31.12.2022 22:00',
+                         text='Введите дату и время. Введите дату в формате по МСК: 31.12.2022 22:00 \n'
+                              'Перейти в /menu',
                          reply_markup=markup)
     else:
         BOT.send_message(chat_id=message.chat.id,
@@ -297,7 +306,7 @@ def analytics_button_step(message):
 def main():
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
     global DB
-    DB = sqlite3.connect('sqlite_bot_serv.db', check_same_thread=False)
+    DB = sqlite3.connect('sqlite_bot_copy.db', check_same_thread=False)
     cur = DB.cursor()
     cur.execute("""CREATE TABLE IF NOT EXISTS chats(
        chat_id INT PRIMARY KEY,
@@ -311,16 +320,12 @@ def main():
            message_text TEXT,
            message_photo TEXT);
         """)
-    #cur.execute("""ALTER TABLE IF NOT EXIST ADD COLUMN is_admin BOOLEAN default 0 check (is_admin in (0,1))""")
-    #try:
-     #   # Добавить новый столбец в базу данных
-      #  add_column = '''ALTER TABLE summary ADD COLUMN freq'''
 
     DB.commit()
 
     global scheduler
     jobstores = {
-        'default': SQLAlchemyJobStore(url='sqlite:///sqlite_bot.db')
+        'default': SQLAlchemyJobStore(url=f'sqlite:///{path_to_db}')
     }
     executors = {
         'default': ThreadPoolExecutor(20),
@@ -339,7 +344,6 @@ def insert_chat(chat_id: int, user_name: str):
     cur = DB.cursor()
     cur.execute("""SELECT chat_id from chats WHERE chat_id=?; """, (chat_id,))
     users = cur.fetchall()
-    print(users)
     if not users:
         cur.execute("""INSERT INTO chats(chat_id, user_name) 
            VALUES(?, ?);""", (chat_id, user_name))
