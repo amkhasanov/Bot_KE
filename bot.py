@@ -180,60 +180,58 @@ def add_admin(message):
 def menu(message):
     insert_chat(message.chat.id, message.from_user.username)
     cursor = DB.cursor()
+    bot_menu_message = "Текст по умолчанию какой нибудь надо на случай если в БД будет пусто."
     menu_message_text = cursor.execute(
         """SELECT description from texts_for_bot_botmessage WHERE title = 'bot_menu_message';"""
     ).fetchone()
-    bot_menu_message = menu_message_text
+
+    if menu_message_text:
+        bot_menu_message = menu_message_text
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     cursor = DB.cursor()
-    button_title = cursor.execute(
-        """SELECT * from texts_for_bot_buttontext;"""
+    button_titles = cursor.execute(
+        """SELECT title from texts_for_bot_buttontext;"""
     ).fetchall()
-    btn1 = types.KeyboardButton(button_title[0][1])
-    btn2 = types.KeyboardButton(button_title[1][1])
-    btn3 = types.KeyboardButton(button_title[2][1])
-    btn4 = types.KeyboardButton(button_title[3][1])
-    markup.add(btn1, btn2, btn3, btn4)
+    for button in button_titles:
+        title = button[0]
+        btn = types.KeyboardButton(title)
+        markup.add(btn)
 
     if check_admin(message)[0]:
-        btn5 = types.KeyboardButton('Создать рассылку')
-        markup.add(btn5)
-    BOT.register_next_step_handler(message, process_step, button_title)
+        btn = types.KeyboardButton('Создать рассылку')
+        markup.add(btn)
+
+    BOT.register_next_step_handler(message, process_step)
     BOT.send_message(chat_id=message.chat.id, text=bot_menu_message, reply_markup=markup)
 
 
-def process_step(message, button_title):
+def process_step(message):
     markup = types.ReplyKeyboardRemove()
-    if message.text == button_title[0][1]:
+    cursor = DB.cursor()
+    button_reply_message = cursor.execute(
+        """SELECT message_after_click from texts_for_bot_buttontext WHERE title = ?;""",
+        (message.text,)
+    ).fetchone()
+
+    if button_reply_message:
         BOT.send_message(chat_id=message.chat.id,
-                         text=button_title[0][2], reply_markup=markup)
-    elif message.text == button_title[1][1]:
-        BOT.send_message(chat_id=message.chat.id,
-                         text=button_title[1][2],
+                         text=button_reply_message,
                          reply_markup=markup)
         BOT.send_message(chat_id=message.chat.id,
                          text='Для возврата в меню, нажми /menu.',
                          reply_markup=markup)
-    elif message.text == button_title[2][1]:
-        BOT.send_message(chat_id=message.chat.id,
-                         text=button_title[2][2],
-                         reply_markup=markup)
-    elif message.text == button_title[3][1]:
-        BOT.send_message(chat_id=message.chat.id,
-                         text=button_title[3][2],
-                         reply_markup=markup)
-    elif message.text == button_title[4][1] and check_admin(message)[0]:
+    elif message.text == 'Создать рассылку' and check_admin(message)[0]:
         BOT.register_next_step_handler(message, enter_date_step)
         BOT.send_message(chat_id=message.chat.id,
-                         text=button_title[4][2],
+                         text='Введите дату и время. Введите дату в формате по МСК: 31.12.2022 22:00 \n'
+                              'Перейти в /menu',
                          reply_markup=markup)
     else:
         BOT.send_message(chat_id=message.chat.id,
                          text='Я не понимаю Вас 🤷🏻‍♂️\n\n'
                               'Перейди в /menu чтобы выбрать действие.',
                          reply_markup=markup)
-
 
 @BOT.message_handler(commands=['analytics'])
 def analytics(message):
