@@ -106,13 +106,12 @@ def send_all(message):
 @BOT.message_handler(commands=['start'])
 def start(message):
     insert_chat(message.chat.id, message.from_user.username)
-    bot_start_message = f'Спасибо за покупку, @{message.from_user.username} ! Мы приготовили для тебя несколько ' \
-                        f'приятных подарков!\n\n' \
-                        f'1️⃣ Возврат до 100 рублей за отзыв\n' \
-                        f'2️⃣ Кэшбэк до 10% при покупках на KazanExpress\n' \
-                        f'3️⃣ Доступ в  канал со скидками и акциями\n\n' \
-                        f'🎁 🎁 🎁\n\n' \
-                        f'Перейди в /menu и выбери свой подарок!'
+
+    cursor = DB.cursor()
+    start_message_text = cursor.execute(
+        """SELECT description from texts_for_bot_botmessage WHERE title = 'bot_start_message';"""
+    ).fetchone()
+    bot_start_message = start_message_text[0]
     BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
 
 
@@ -180,24 +179,31 @@ def add_admin(message):
 @BOT.message_handler(commands=['menu'])
 def menu(message):
     insert_chat(message.chat.id, message.from_user.username)
-    bot_menu_message = f'Для того, чтобы получить кэшбэк до 100%, нужно оставить максимально подробный отзыв с тремя ' \
-                       f'фотографиями и прислать скриншот менеджеру в @mirsee \n' \
-                       f'Чтобы получать постоянный кэшбэк от всех покупок до 10% нужно зарегистрироваться по ссылке ' \
-                       f'ниже 👇🏻👇🏻👇🏻'
+    cursor = DB.cursor()
+    menu_message_text = cursor.execute(
+        """SELECT description from texts_for_bot_botmessage WHERE title = 'bot_menu_message';"""
+    ).fetchone()
+    bot_menu_message = menu_message_text
+
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    btn1 = types.KeyboardButton('🎁 Кэшбэк за отзыв до 100%')
-    btn2 = types.KeyboardButton('💵 Кэшбэк от всех покупок 3-10%')
-    btn3 = types.KeyboardButton('📲 Телеграм Константина')
-    btn4 = types.KeyboardButton('💳 Наши магазины')
+    cursor = DB.cursor()
+    button_title = cursor.execute(
+        """SELECT * from texts_for_bot_buttontext;"""
+    ).fetchall()
+    btn1 = types.KeyboardButton(button_title[0][1])
+    btn2 = types.KeyboardButton(button_title[1][1])
+    btn3 = types.KeyboardButton(button_title[2][1])
+    btn4 = types.KeyboardButton(button_title[3][1])
     markup.add(btn1, btn2, btn3, btn4)
 
     if check_admin(message)[0]:
         btn5 = types.KeyboardButton('Создать рассылку')
         markup.add(btn5)
-    BOT.register_next_step_handler(message, process_step)
+    BOT.register_next_step_handler(message, process_step, button_title)
     BOT.send_message(chat_id=message.chat.id, text=bot_menu_message, reply_markup=markup)
 
-def process_step(message):
+
+def process_step(message, button_title):
     markup = types.ReplyKeyboardRemove()
     if message.text == '💵 Кэшбэк от всех покупок 3-10%':
         BOT.send_message(chat_id=message.chat.id,

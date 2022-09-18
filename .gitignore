@@ -1,4 +1,5 @@
 # Byte-compiled / optimized / DLL files
+/admin_panel/admin_for_bot/settings.py
 settings.py
 __pycache__/
 *.py[cod]
