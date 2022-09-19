@@ -180,7 +180,7 @@ def add_admin(message):
 def menu(message):
     insert_chat(message.chat.id, message.from_user.username)
     cursor = DB.cursor()
-    bot_menu_message = "Текст по умолчанию какой нибудь надо на случай если в БД будет пусто."
+    bot_menu_message = "Что то пошло не так. Напишите пожалуйста нашему менеджеру @mirsee и мы все исправим"
     menu_message_text = cursor.execute(
         """SELECT description from texts_for_bot_botmessage WHERE title = 'bot_menu_message';"""
     ).fetchone()
@@ -197,11 +197,6 @@ def menu(message):
         title = button[0]
         btn = types.KeyboardButton(title)
         markup.add(btn)
-
-    if check_admin(message)[0]:
-        btn = types.KeyboardButton('Создать рассылку')
-        markup.add(btn)
-
     BOT.register_next_step_handler(message, process_step)
     BOT.send_message(chat_id=message.chat.id, text=bot_menu_message, reply_markup=markup)
 
@@ -215,16 +210,21 @@ def process_step(message):
     ).fetchone()
 
     if button_reply_message:
+        print(button_reply_message)
         BOT.send_message(chat_id=message.chat.id,
                          text=button_reply_message,
                          reply_markup=markup)
-        BOT.send_message(chat_id=message.chat.id,
-                         text='Для возврата в меню, нажми /menu.',
-                         reply_markup=markup)
-    elif message.text == 'Создать рассылку' and check_admin(message)[0]:
+
+    elif button_reply_message == ('Введите дату и время. Введите дату в формате по МСК:'
+                          ' 31.12.2022 22:00\r\n\r\nПерейти в /menu',) and check_admin(message)[0] == 1:
         BOT.register_next_step_handler(message, enter_date_step)
         BOT.send_message(chat_id=message.chat.id,
                          text='Введите дату и время. Введите дату в формате по МСК: 31.12.2022 22:00 \n'
+                              'Перейти в /menu',
+                         reply_markup=markup)
+        if check_admin(message)[0] == 0:
+            BOT.send_message(chat_id=message.chat.id,
+                         text='Данная операция доступна только для админов \n'
                               'Перейти в /menu',
                          reply_markup=markup)
     else:
