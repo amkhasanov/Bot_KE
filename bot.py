@@ -214,7 +214,6 @@ def process_step(message):
             (message.text,)
         ).fetchone()
         if button_reply_message:
-            print(button_reply_message)
             BOT.send_message(chat_id=message.chat.id,
                              text=button_reply_message,
                              reply_markup=markup)
