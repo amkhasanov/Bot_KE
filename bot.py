@@ -184,7 +184,6 @@ def menu(message):
     menu_message_text = cursor.execute(
         """SELECT description from texts_for_bot_botmessage WHERE title = 'bot_menu_message';"""
     ).fetchone()
-
     if menu_message_text:
         bot_menu_message = menu_message_text
 
@@ -203,35 +202,34 @@ def menu(message):
 
 def process_step(message):
     markup = types.ReplyKeyboardRemove()
-    cursor = DB.cursor()
-    button_reply_message = cursor.execute(
-        """SELECT message_after_click from texts_for_bot_buttontext WHERE title = ?;""",
-        (message.text,)
-    ).fetchone()
-
-    if button_reply_message:
-        print(button_reply_message)
+    if check_admin(message)[0] == 0 and message.text == 'Создать рассылку':
         BOT.send_message(chat_id=message.chat.id,
-                         text=button_reply_message,
-                         reply_markup=markup)
-
-    elif button_reply_message == ('Введите дату и время. Введите дату в формате по МСК:'
-                          ' 31.12.2022 22:00\r\n\r\nПерейти в /menu',) and check_admin(message)[0] == 1:
-        BOT.register_next_step_handler(message, enter_date_step)
-        BOT.send_message(chat_id=message.chat.id,
-                         text='Введите дату и время. Введите дату в формате по МСК: 31.12.2022 22:00 \n'
-                              'Перейти в /menu',
-                         reply_markup=markup)
-        if check_admin(message)[0] == 0:
-            BOT.send_message(chat_id=message.chat.id,
                          text='Данная операция доступна только для админов \n'
                               'Перейти в /menu',
                          reply_markup=markup)
     else:
-        BOT.send_message(chat_id=message.chat.id,
-                         text='Я не понимаю Вас 🤷🏻‍♂️\n\n'
-                              'Перейди в /menu чтобы выбрать действие.',
-                         reply_markup=markup)
+        cursor = DB.cursor()
+        button_reply_message = cursor.execute(
+            """SELECT message_after_click from texts_for_bot_buttontext WHERE title = ?;""",
+            (message.text,)
+        ).fetchone()
+        if button_reply_message:
+            print(button_reply_message)
+            BOT.send_message(chat_id=message.chat.id,
+                             text=button_reply_message,
+                             reply_markup=markup)
+        elif button_reply_message == ('Введите дату и время. Введите дату в формате по МСК:'
+                              ' 31.12.2022 22:00\r\n\r\nПерейти в /menu',) and check_admin(message)[0] == 1:
+            BOT.register_next_step_handler(message, enter_date_step)
+            BOT.send_message(chat_id=message.chat.id,
+                             text='Введите дату и время. Введите дату в формате по МСК: 31.12.2022 22:00 \n'
+                                  'Перейти в /menu',
+                             reply_markup=markup)
+        else:
+            BOT.send_message(chat_id=message.chat.id,
+                             text='Я не понимаю Вас 🤷🏻‍♂️\n\n'
+                                  'Перейди в /menu чтобы выбрать действие.',
+                             reply_markup=markup)
 
 @BOT.message_handler(commands=['analytics'])
 def analytics(message):
