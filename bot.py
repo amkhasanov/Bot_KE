@@ -109,7 +109,7 @@ def start(message):
 
     cursor = DB.cursor()
     start_message_text = cursor.execute(
-        """SELECT description from texts_for_bot_botmessage WHERE title = 'bot_start_message';"""
+        """SELECT description from texts_for_bot_botmessage WHERE title = 'start_message';"""
     ).fetchone()
     bot_start_message = start_message_text[0]
     BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
@@ -180,9 +180,9 @@ def add_admin(message):
 def menu(message):
     insert_chat(message.chat.id, message.from_user.username)
     cursor = DB.cursor()
-    bot_menu_message = "Что то пошло не так. Напишите пожалуйста нашему менеджеру @mirsee и мы все исправим"
+    bot_menu_message = "Что-то пошло не так. Напишите пожалуйста нашему менеджеру @mirsee и мы все исправим"
     menu_message_text = cursor.execute(
-        """SELECT description from texts_for_bot_botmessage WHERE title = 'bot_menu_message';"""
+        """SELECT description from texts_for_bot_botmessage WHERE title = 'menu_message';"""
     ).fetchone()
     if menu_message_text:
         bot_menu_message = menu_message_text
@@ -232,14 +232,18 @@ def process_step(message):
 
 @BOT.message_handler(commands=['analytics'])
 def analytics(message):
-    bot_analytics_message = f'Выберите нужный вам период'
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
-    btn1 = types.KeyboardButton('За все время')
-    btn2 = types.KeyboardButton('За месяц')
-    btn3 = types.KeyboardButton('За неделю')
-    markup.add(btn1, btn2, btn3)
-    BOT.register_next_step_handler(message, analytics_button_step)
-    BOT.send_message(chat_id=message.chat.id, text=bot_analytics_message, reply_markup=markup)
+    if check_admin(message)[0]:
+        bot_analytics_message = f'Выберите нужный вам период'
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
+        btn1 = types.KeyboardButton('За все время')
+        btn2 = types.KeyboardButton('За месяц')
+        btn3 = types.KeyboardButton('За неделю')
+        markup.add(btn1, btn2, btn3)
+        BOT.register_next_step_handler(message, analytics_button_step)
+        BOT.send_message(chat_id=message.chat.id, text=bot_analytics_message, reply_markup=markup)
+    else:
+        bot_start_message = 'Вам не доступна данная команда. Для возврата в основное меню нажмите /menu '
+        BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
 
 
 def analytics_button_step(message):
