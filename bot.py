@@ -33,7 +33,7 @@ def enter_date_step(message):
             cur = DB.cursor()
             cur.execute("""UPDATE chats SET 
                last_send_date=?
-               WHERE chat_id=?""", (last_date, message.chat.id))
+               WHERE chat_id=?;""", (last_date, message.chat.id))
             DB.commit()
             BOT.send_message(chat_id=message.chat.id,
                              text="Прикрепите картинку и добавтье подпись")
@@ -47,7 +47,7 @@ def enter_date_step(message):
 
 def enter_img_txt_step(message):
     cur = DB.cursor()
-    cur.execute("""SELECT last_send_date from chats WHERE chat_id=? 
+    cur.execute("""SELECT last_send_date from chats WHERE chat_id=?; 
                """, (message.chat.id,))
     last_date = cur.fetchone()[0]
 
@@ -77,30 +77,16 @@ def scheduled_message(message, last_date):
 def sched(text=None, caption=None, photo=None):
     logging.info(f"Выполнение запланированной задачи")
     cursor = DB.cursor()
-    sqlite_select_query = """SELECT * from chats"""
+    sqlite_select_query = """SELECT * from chats;"""
     cursor.execute(sqlite_select_query)
     records = cursor.fetchall()
     if text:
         for user in records:
-            send_all_message = text
-            BOT.send_message(chat_id=user[0], text=send_all_message)
+            BOT.send_message(chat_id=user[0], text=text)
     else:
         for user in records:
             BOT.send_photo(chat_id=user[0],
                            photo=photo, caption=caption)
-
-
-def send_all(message):
-    if check_admin(message)[0]:
-        cursor = DB.cursor()
-        sqlite_select_query = """SELECT * from chats"""
-        cursor.execute(sqlite_select_query)
-        records = cursor.fetchall()
-        for user in records:
-            send_all_message = message.text
-            BOT.send_message(chat_id=user[0], text=send_all_message)
-        BOT.send_message(chat_id=message.chat.id,
-                         text="Рассылка отправлена. Нажми /menu чтобы вернуться в Основное меню")
 
 
 @BOT.message_handler(commands=['start'])
@@ -192,7 +178,7 @@ def menu(message):
     button_titles = cursor.execute(
         """SELECT title from texts_for_bot_buttontext;"""
     ).fetchall()
-    for button in button_titles:
+    for button in button_titles: #Создание кнопок
         title = button[0]
         btn = types.KeyboardButton(title)
         markup.add(btn)
@@ -217,13 +203,10 @@ def process_step(message):
             BOT.send_message(chat_id=message.chat.id,
                              text=button_reply_message,
                              reply_markup=markup)
-        elif button_reply_message == ('Введите дату и время. Введите дату в формате по МСК:'
+            if button_reply_message == ('Введите дату и время. Введите дату в формате по МСК:'
                               ' 31.12.2022 22:00\r\n\r\nПерейти в /menu',) and check_admin(message)[0] == 1:
-            BOT.register_next_step_handler(message, enter_date_step)
-            BOT.send_message(chat_id=message.chat.id,
-                             text='Введите дату и время. Введите дату в формате по МСК: 31.12.2022 22:00 \n'
-                                  'Перейти в /menu',
-                             reply_markup=markup)
+                BOT.register_next_step_handler(message, enter_date_step)
+
         else:
             BOT.send_message(chat_id=message.chat.id,
                              text='Я не понимаю Вас 🤷🏻‍♂️\n\n'
