@@ -10,7 +10,7 @@ from telebot import types
 
 from settings import TOKEN, path_to_db
 
-DB = None
+DB: sqlite3.Connection = None
 BOT = telebot.TeleBot(TOKEN)
 
 
@@ -79,19 +79,26 @@ def sched(text=None, caption=None, photo=None):
     sqlite_select_query = """SELECT * from chats;"""
     cursor.execute(sqlite_select_query)
     records = cursor.fetchall()
+    results = 0
     if text:
         for user in records:
-            BOT.send_message(chat_id=user[0], text=text)
+            sended = BOT.send_message(chat_id=user[0], text=text)
+            logging.info(f"sended {sended}")
+            results += 1 if sended else 0
     else:
         for user in records:
-            BOT.send_photo(chat_id=user[0],
+            sended = BOT.send_photo(chat_id=user[0],
                            photo=photo, caption=caption)
+            logging.info(f"sended {sended}")
+            results += 1 if sended else 0
+
+    logging.info(f"scheduler send {results} messages")
 
 
 @BOT.message_handler(commands=['start'])
 def start(message):
     insert_chat(message.chat.id, message.from_user.username)
-
+    sched("SEND TEST")
     cursor = DB.cursor()
     start_message_text = cursor.execute(
         """SELECT description from texts_for_bot_botmessage WHERE title = 'start_message';"""
@@ -204,6 +211,9 @@ def process_step(message):
     if button_reply_message == ('Введите дату и время. Введите дату в формате по МСК:'
                           ' 31.12.2022 22:00\r\n\r\nПерейти в /menu',) and is_admin(message):
             BOT.register_next_step_handler(message, enter_date_step)
+            BOT.send_message(chat_id=message.chat.id,
+                             text=button_reply_message,
+                             reply_markup=markup)
     elif button_reply_message == ('Выберите период',) and is_admin(message):
             analytics(message)
     elif button_reply_message:
