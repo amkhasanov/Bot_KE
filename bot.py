@@ -204,6 +204,9 @@ def process_step(message):
     if button_reply_message == ('Введите дату и время. Введите дату в формате по МСК:'
                           ' 31.12.2022 22:00\r\n\r\nПерейти в /menu',) and is_admin(message):
             BOT.register_next_step_handler(message, enter_date_step)
+            BOT.send_message(chat_id=message.chat.id,
+                             text=button_reply_message,
+                             reply_markup=markup)
     elif button_reply_message == ('Выберите период',) and is_admin(message):
             analytics(message)
     elif button_reply_message:
