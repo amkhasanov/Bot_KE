@@ -180,6 +180,8 @@ def menu(message):
     ).fetchall()
     for button in button_titles: #Создание кнопок
         title = button[0]
+        if title == 'Создать рассылку' or 'Статистика' and check_admin(message)[0] == 0:
+            pass
         btn = types.KeyboardButton(title)
         markup.add(btn)
     BOT.register_next_step_handler(message, process_step)
@@ -188,33 +190,38 @@ def menu(message):
 
 def process_step(message):
     markup = types.ReplyKeyboardRemove()
-    if check_admin(message)[0] == 0 and message.text == 'Создать рассылку':
+    '''if check_admin(message)[0] == 0 and message.text == 'Создать рассылку':
         BOT.send_message(chat_id=message.chat.id,
                          text='Данная операция доступна только для админов \n'
                               'Перейти в /menu',
+                         reply_markup=markup)'''
+
+    cursor = DB.cursor()
+    button_reply_message = cursor.execute(
+        """SELECT message_after_click from texts_for_bot_buttontext WHERE title = ?;""",
+        (message.text,)
+    ).fetchone()
+
+    if button_reply_message == ('Введите дату и время. Введите дату в формате по МСК:'
+                          ' 31.12.2022 22:00\r\n\r\nПерейти в /menu',) and check_admin(message)[0] == 1:
+            BOT.register_next_step_handler(message, enter_date_step)
+    elif button_reply_message == ('Выберите период',) and check_admin(message)[0] == 1:
+            analytics(message)
+    elif button_reply_message:
+        BOT.send_message(chat_id=message.chat.id,
+                         text=button_reply_message,
                          reply_markup=markup)
+
     else:
-        cursor = DB.cursor()
-        button_reply_message = cursor.execute(
-            """SELECT message_after_click from texts_for_bot_buttontext WHERE title = ?;""",
-            (message.text,)
-        ).fetchone()
-        if button_reply_message:
-            BOT.send_message(chat_id=message.chat.id,
-                             text=button_reply_message,
-                             reply_markup=markup)
-            if button_reply_message == ('Введите дату и время. Введите дату в формате по МСК:'
-                              ' 31.12.2022 22:00\r\n\r\nПерейти в /menu',) and check_admin(message)[0] == 1:
-                BOT.register_next_step_handler(message, enter_date_step)
+        BOT.send_message(chat_id=message.chat.id,
+                         text='Я не понимаю Вас 🤷🏻‍♂️\n\n'
+                              'Перейди в /menu чтобы выбрать действие.',
+                         reply_markup=markup)
 
-        else:
-            BOT.send_message(chat_id=message.chat.id,
-                             text='Я не понимаю Вас 🤷🏻‍♂️\n\n'
-                                  'Перейди в /menu чтобы выбрать действие.',
-                             reply_markup=markup)
-
-@BOT.message_handler(commands=['analytics'])
+#@BOT.message_handler(commands=['analytics'])
 def analytics(message):
+    print(check_admin(message)[0])
+
     if check_admin(message)[0]:
         bot_analytics_message = f'Выберите нужный вам период'
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
