@@ -7,6 +7,7 @@ from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
 from pytz import utc
 from telebot import types
+from telebot.apihelper import ApiTelegramException
 
 from settings import TOKEN, path_to_db
 
@@ -80,19 +81,27 @@ def sched(text=None, caption=None, photo=None):
     cursor.execute(sqlite_select_query)
     records = cursor.fetchall()
     results = 0
+    not_sended = 0
     if text:
         for user in records:
-            sended = BOT.send_message(chat_id=user[0], text=text)
-            logging.info(f"sended {sended}")
-            results += 1 if sended else 0
+            try:
+                sended = BOT.send_message(chat_id=user[0], text=text)
+                logging.info(f"sended {sended}")
+                results += 1 if sended else 0
+            except ApiTelegramException:
+                not_sended += 1
+
     else:
         for user in records:
-            sended = BOT.send_photo(chat_id=user[0],
+            try:
+                sended = BOT.send_photo(chat_id=user[0],
                            photo=photo, caption=caption)
-            logging.info(f"sended {sended}")
-            results += 1 if sended else 0
+                logging.info(f"sended {sended}")
+                results += 1 if sended else 0
+            except ApiTelegramException:
+                not_sended += 1
 
-    logging.info(f"scheduler send {results} messages")
+    logging.info(f"scheduler send {results} messages, not sended {not_sended}")
 
 
 @BOT.message_handler(commands=['start'])
