@@ -14,12 +14,11 @@ DB = None
 BOT = telebot.TeleBot(TOKEN)
 
 
-def check_admin(message):
+def is_admin(message) -> bool:
     cur = DB.cursor()
     cur.execute("""SELECT is_admin from chats WHERE chat_id=? 
                    """, (message.chat.id,))
-    is_admin = cur.fetchone()
-    return is_admin
+    return cur.fetchone()[0]
 
 
 
@@ -103,7 +102,7 @@ def start(message):
 
 @BOT.message_handler(commands=['admin'])
 def admin(message):
-    if check_admin(message)[0]:
+    if is_admin(message):
         bot_start_message = 'Введите ID-пользователя, которого необходимо добавить в "админы" \n' \
                             'Для удаления админа,введите ID-пользователя пробел удалить.\n' \
                             'Пример: 123456789 удалить  '
@@ -180,8 +179,8 @@ def menu(message):
     ).fetchall()
     for button in button_titles: #Создание кнопок
         title = button[0]
-        if title == 'Создать рассылку' or 'Статистика' and check_admin(message)[0] == 0:
-            pass
+        if (title == 'Создать рассылку' or title == 'Статистика') and not is_admin(message):
+            continue
         btn = types.KeyboardButton(title)
         markup.add(btn)
     BOT.register_next_step_handler(message, process_step)
@@ -203,9 +202,9 @@ def process_step(message):
     ).fetchone()
 
     if button_reply_message == ('Введите дату и время. Введите дату в формате по МСК:'
-                          ' 31.12.2022 22:00\r\n\r\nПерейти в /menu',) and check_admin(message)[0] == 1:
+                          ' 31.12.2022 22:00\r\n\r\nПерейти в /menu',) and is_admin(message):
             BOT.register_next_step_handler(message, enter_date_step)
-    elif button_reply_message == ('Выберите период',) and check_admin(message)[0] == 1:
+    elif button_reply_message == ('Выберите период',) and is_admin(message):
             analytics(message)
     elif button_reply_message:
         BOT.send_message(chat_id=message.chat.id,
@@ -220,9 +219,9 @@ def process_step(message):
 
 #@BOT.message_handler(commands=['analytics'])
 def analytics(message):
-    print(check_admin(message)[0])
+    print(is_admin(message))
 
-    if check_admin(message)[0]:
+    if is_admin(message):
         bot_analytics_message = f'Выберите нужный вам период'
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
         btn1 = types.KeyboardButton('За все время')
