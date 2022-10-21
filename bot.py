@@ -107,7 +107,6 @@ def sched(text=None, caption=None, photo=None):
 @BOT.message_handler(commands=['start'])
 def start(message):
     insert_chat(message.chat.id, message.from_user.username)
-    sched("SEND TEST")
     cursor = DB.cursor()
     start_message_text = cursor.execute(
         """SELECT description from texts_for_bot_botmessage WHERE title = 'start_message';"""
