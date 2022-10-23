@@ -73,6 +73,15 @@ def scheduled_message(message, last_date):
                       args=[text, caption, photo])
     logging.info(f"Задача добавлена в шедулер дата:{date_scheduler}")
 
+    cur = DB.cursor()
+    if message.text == None:
+        cur.execute("""INSERT INTO texts_for_bot_plannedmessages(planned_date, planned_msg_text) 
+                  VALUES(?, ?);""", (date_scheduler, message.caption,))
+    else:
+        cur.execute("""INSERT INTO texts_for_bot_plannedmessages(planned_date, planned_msg_text)
+                      VALUES(?, ?);""", (date_scheduler, message.text,))
+
+    DB.commit()
 
 def sched(text=None, caption=None, photo=None):
     logging.info(f"Выполнение запланированной задачи")
@@ -101,7 +110,7 @@ def sched(text=None, caption=None, photo=None):
             except ApiTelegramException:
                 not_sended += 1
 
-    logging.info(f"scheduler send {results} messages, not sended {not_sended}")
+    logging.info(f"scheduler send {results} messages, not send {not_sended}")
 
 
 @BOT.message_handler(commands=['start'])
