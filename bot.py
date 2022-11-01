@@ -22,7 +22,6 @@ def is_admin(message) -> bool:
     return cur.fetchone()[0]
 
 
-
 def enter_date_step(message):
     if message.text == '/menu':
         menu(message)
@@ -95,7 +94,6 @@ def sched(text=None, caption=None, photo=None):
         for user in records:
             try:
                 sended = BOT.send_message(chat_id=user[0], text=text)
-                logging.info(f"sended {sended}")
                 results += 1 if sended else 0
             except ApiTelegramException:
                 not_sended += 1
