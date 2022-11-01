@@ -29,6 +29,7 @@ class SendedMessages(models.Model):
 class PlannedMessages(models.Model):
     planned_date = models.DateTimeField()
     planned_msg_text = models.CharField(max_length=1000)
+    #status = models.CharField(max_length=30, default='Не отправлено')
 
     def __str__(self):
         return self.title

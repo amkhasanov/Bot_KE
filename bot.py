@@ -80,8 +80,8 @@ def scheduled_message(message, last_date):
     else:
         cur.execute("""INSERT INTO texts_for_bot_plannedmessages(planned_date, planned_msg_text)
                       VALUES(?, ?);""", (date_scheduler, message.text,))
-
     DB.commit()
+
 
 def sched(text=None, caption=None, photo=None):
     logging.info(f"Выполнение запланированной задачи")
@@ -111,6 +111,12 @@ def sched(text=None, caption=None, photo=None):
                 not_sended += 1
 
     logging.info(f"scheduler send {results} messages, not send {not_sended}")
+
+    dt_now = datetime.now()
+    cur = DB.cursor()
+    cur.execute("""INSERT INTO texts_for_bot_sendedmessages(send_date, not_send, success_send) 
+                      VALUES(?, ?, ?);""", (dt_now, not_sended, results,))
+    DB.commit()
 
 
 @BOT.message_handler(commands=['start'])
@@ -244,10 +250,8 @@ def process_step(message):
                               'Перейди в /menu чтобы выбрать действие.',
                          reply_markup=markup)
 
-#@BOT.message_handler(commands=['analytics'])
-def analytics(message):
-    print(is_admin(message))
 
+def analytics(message):
     if is_admin(message):
         bot_analytics_message = f'Выберите нужный вам период'
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
