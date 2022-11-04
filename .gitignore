@@ -1,6 +1,7 @@
 # Byte-compiled / optimized / DLL files
 /admin_panel/admin_for_bot/settings.py
 settings.py
+add_column_to_chats.py
 __pycache__/
 *.py[cod]
 *$py.class
