@@ -33,3 +33,4 @@ class PlannedMessages(models.Model):
 
     def __str__(self):
         return self.title
+

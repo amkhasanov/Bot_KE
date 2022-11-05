@@ -17,3 +17,4 @@ def show_admin_custom_page(request):
     print('sended msgs', sended_msgs)
     data = {'planned_msgs': planned_msgs, 'sended_msgs': sended_msgs}
     return render(request, 'admin-custom-page.html', context=data)
+
