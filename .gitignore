@@ -1,6 +1,9 @@
 # Byte-compiled / optimized / DLL files
-/admin_panel/admin_for_bot/settings.py
+/admin_panel/admin_for_bot/settings_local.py
+admin_panel/secret_file.txt
+admin_panel/setup.txt
 settings.py
+add_column_to_chats.py
 __pycache__/
 *.py[cod]
 *$py.class

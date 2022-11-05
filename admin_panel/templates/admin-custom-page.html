@@ -1,0 +1,25 @@
+{% extends 'admin/base_site.html' %}
+
+{% block content %}
+	<h1>Запланированные рассылки</h1>
+	{% if planned_msgs %}
+    	<table border>
+			<tr> <td>Дата</td> <td>Текст</td> </tr>
+			{% for msg in planned_msgs %}
+			<tr><td>{{msg.1}}</td><td>{{msg.2}}</td></tr>
+			{% endfor %}
+		</table>
+	{% else %}
+    	<h2>Сообщений нет</h2>
+	{% endif %}
+	<h1> </h1>
+	<h1>Выполненные рассылки</h1>
+	<table border>
+		<thead>
+		<tr><td>Дата</td> <td>Получили рассылку</td> <td>Не доставлено</td></tr>
+		</thead>
+		{% for msg in sended_msgs %}
+		<tr><td>{{msg.1}}</td><td>{{msg.3}}</td><td>{{msg.2}}</td></tr>
+		{% endfor %}
+	</table>
+{% endblock content%}

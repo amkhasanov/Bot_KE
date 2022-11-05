@@ -7,20 +7,19 @@ from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
 from pytz import utc
 from telebot import types
+from telebot.apihelper import ApiTelegramException
 
 from settings import TOKEN, path_to_db
 
-DB = None
+DB: sqlite3.Connection = None
 BOT = telebot.TeleBot(TOKEN)
 
 
-def check_admin(message):
+def is_admin(message) -> bool:
     cur = DB.cursor()
     cur.execute("""SELECT is_admin from chats WHERE chat_id=? 
                    """, (message.chat.id,))
-    is_admin = cur.fetchone()
-    return is_admin
-
+    return cur.fetchone()[0]
 
 
 def enter_date_step(message):
@@ -73,6 +72,15 @@ def scheduled_message(message, last_date):
                       args=[text, caption, photo])
     logging.info(f"Задача добавлена в шедулер дата:{date_scheduler}")
 
+    cur = DB.cursor()
+    if message.text == None:
+        cur.execute("""INSERT INTO texts_for_bot_plannedmessages(planned_date, planned_msg_text) 
+                  VALUES(?, ?);""", (date_scheduler, message.caption,))
+    else:
+        cur.execute("""INSERT INTO texts_for_bot_plannedmessages(planned_date, planned_msg_text)
+                      VALUES(?, ?);""", (date_scheduler, message.text,))
+    DB.commit()
+
 
 def sched(text=None, caption=None, photo=None):
     logging.info(f"Выполнение запланированной задачи")
@@ -80,19 +88,38 @@ def sched(text=None, caption=None, photo=None):
     sqlite_select_query = """SELECT * from chats;"""
     cursor.execute(sqlite_select_query)
     records = cursor.fetchall()
+    results = 0
+    not_sended = 0
     if text:
         for user in records:
-            BOT.send_message(chat_id=user[0], text=text)
+            try:
+                sended = BOT.send_message(chat_id=user[0], text=text)
+                results += 1 if sended else 0
+            except ApiTelegramException:
+                not_sended += 1
+
     else:
         for user in records:
-            BOT.send_photo(chat_id=user[0],
+            try:
+                sended = BOT.send_photo(chat_id=user[0],
                            photo=photo, caption=caption)
+                logging.info(f"sended {sended}")
+                results += 1 if sended else 0
+            except ApiTelegramException:
+                not_sended += 1
+
+    logging.info(f"scheduler send {results} messages, not send {not_sended}")
+
+    dt_now = datetime.now()
+    cur = DB.cursor()
+    cur.execute("""INSERT INTO texts_for_bot_sendedmessages(send_date, not_send, success_send) 
+                      VALUES(?, ?, ?);""", (dt_now, not_sended, results,))
+    DB.commit()
 
 
 @BOT.message_handler(commands=['start'])
 def start(message):
     insert_chat(message.chat.id, message.from_user.username)
-
     cursor = DB.cursor()
     start_message_text = cursor.execute(
         """SELECT description from texts_for_bot_botmessage WHERE title = 'start_message';"""
@@ -103,7 +130,7 @@ def start(message):
 
 @BOT.message_handler(commands=['admin'])
 def admin(message):
-    if check_admin(message)[0]:
+    if is_admin(message):
         bot_start_message = 'Введите ID-пользователя, которого необходимо добавить в "админы" \n' \
                             'Для удаления админа,введите ID-пользователя пробел удалить.\n' \
                             'Пример: 123456789 удалить  '
@@ -180,6 +207,8 @@ def menu(message):
     ).fetchall()
     for button in button_titles: #Создание кнопок
         title = button[0]
+        if (title == 'Создать рассылку' or title == 'Статистика') and not is_admin(message):
+            continue
         btn = types.KeyboardButton(title)
         markup.add(btn)
     BOT.register_next_step_handler(message, process_step)
@@ -188,34 +217,40 @@ def menu(message):
 
 def process_step(message):
     markup = types.ReplyKeyboardRemove()
-    if check_admin(message)[0] == 0 and message.text == 'Создать рассылку':
+    '''if check_admin(message)[0] == 0 and message.text == 'Создать рассылку':
         BOT.send_message(chat_id=message.chat.id,
                          text='Данная операция доступна только для админов \n'
                               'Перейти в /menu',
-                         reply_markup=markup)
-    else:
-        cursor = DB.cursor()
-        button_reply_message = cursor.execute(
-            """SELECT message_after_click from texts_for_bot_buttontext WHERE title = ?;""",
-            (message.text,)
-        ).fetchone()
-        if button_reply_message:
+                         reply_markup=markup)'''
+
+    cursor = DB.cursor()
+    button_reply_message = cursor.execute(
+        """SELECT message_after_click from texts_for_bot_buttontext WHERE title = ?;""",
+        (message.text,)
+    ).fetchone()
+
+    if button_reply_message == ('Введите дату и время. Введите дату в формате по МСК:'
+                          ' 31.12.2022 22:00\r\n\r\nПерейти в /menu',) and is_admin(message):
+            BOT.register_next_step_handler(message, enter_date_step)
             BOT.send_message(chat_id=message.chat.id,
                              text=button_reply_message,
                              reply_markup=markup)
-            if button_reply_message == ('Введите дату и время. Введите дату в формате по МСК:'
-                              ' 31.12.2022 22:00\r\n\r\nПерейти в /menu',) and check_admin(message)[0] == 1:
-                BOT.register_next_step_handler(message, enter_date_step)
+    elif button_reply_message == ('Выберите период',) and is_admin(message):
+            analytics(message)
+    elif button_reply_message:
+        BOT.send_message(chat_id=message.chat.id,
+                         text=button_reply_message,
+                         reply_markup=markup)
 
-        else:
-            BOT.send_message(chat_id=message.chat.id,
-                             text='Я не понимаю Вас 🤷🏻‍♂️\n\n'
-                                  'Перейди в /menu чтобы выбрать действие.',
-                             reply_markup=markup)
+    else:
+        BOT.send_message(chat_id=message.chat.id,
+                         text='Я не понимаю Вас 🤷🏻‍♂️\n\n'
+                              'Перейди в /menu чтобы выбрать действие.',
+                         reply_markup=markup)
 
-@BOT.message_handler(commands=['analytics'])
+
 def analytics(message):
-    if check_admin(message)[0]:
+    if is_admin(message):
         bot_analytics_message = f'Выберите нужный вам период'
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
         btn1 = types.KeyboardButton('За все время')
