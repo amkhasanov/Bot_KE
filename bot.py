@@ -178,7 +178,7 @@ def add_admin(message):
         one_result = cur.fetchone()
         if one_result == None:
             bot_start_message = 'Такого пользователя нет в нашей базе, либо введен неверный ID.\n' \
-                               'Для возврата в основное меню /menu'
+                                'Для возврата в основное меню /menu'
             BOT.send_message(chat_id=message.chat.id, text=bot_start_message)
         else:
             cur = DB.cursor()
@@ -205,7 +205,7 @@ def menu(message):
     button_titles = cursor.execute(
         """SELECT title from texts_for_bot_buttontext;"""
     ).fetchall()
-    for button in button_titles: #Создание кнопок
+    for button in button_titles:  # Создание кнопок
         title = button[0]
         if (title == 'Создать рассылку' or title == 'Статистика') and not is_admin(message):
             continue
@@ -230,13 +230,13 @@ def process_step(message):
     ).fetchone()
 
     if button_reply_message == ('Введите дату и время. Введите дату в формате по МСК:'
-                          ' 31.12.2022 22:00\r\n\r\nПерейти в /menu',) and is_admin(message):
-            BOT.register_next_step_handler(message, enter_date_step)
-            BOT.send_message(chat_id=message.chat.id,
-                             text=button_reply_message,
-                             reply_markup=markup)
+                                ' 31.12.2022 22:00\r\n\r\nПерейти в /menu',) and is_admin(message):
+        BOT.register_next_step_handler(message, enter_date_step)
+        BOT.send_message(chat_id=message.chat.id,
+                         text=button_reply_message,
+                         reply_markup=markup)
     elif button_reply_message == ('Выберите период',) and is_admin(message):
-            analytics(message)
+        analytics(message)
     elif button_reply_message:
         BOT.send_message(chat_id=message.chat.id,
                          text=button_reply_message,
@@ -343,12 +343,13 @@ def main():
 
 
 def insert_chat(chat_id: int, user_name: str):
+    date_now = datetime.now()
     cur = DB.cursor()
     cur.execute("""SELECT chat_id from chats WHERE chat_id=?; """, (chat_id,))
     users = cur.fetchall()
     if not users:
-        cur.execute("""INSERT INTO chats(chat_id, user_name) 
-           VALUES(?, ?);""", (chat_id, user_name))
+        cur.execute("""INSERT INTO chats(chat_id, user_name, subscription_date) 
+           VALUES(?, ?, ?);""", (chat_id, user_name, date_now))
         DB.commit()
 
 
