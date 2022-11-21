@@ -192,6 +192,8 @@ def add_admin(message):
 @BOT.message_handler(commands=['menu'])
 def menu(message):
     insert_chat(message.chat.id, message.from_user.username)
+    button_title = 'menu'
+    button_analytic(button_title)
     cursor = DB.cursor()
     bot_menu_message = "Что-то пошло не так. Напишите пожалуйста нашему менеджеру @mirsee и мы все исправим"
     menu_message_text = cursor.execute(
@@ -216,6 +218,8 @@ def menu(message):
 
 
 def process_step(message):
+    button_title = message.text
+    button_analytic(button_title)
     markup = types.ReplyKeyboardRemove()
     '''if check_admin(message)[0] == 0 and message.text == 'Создать рассылку':
         BOT.send_message(chat_id=message.chat.id,
@@ -350,6 +354,16 @@ def insert_chat(chat_id: int, user_name: str):
         cur.execute("""INSERT INTO chats(chat_id, user_name) 
            VALUES(?, ?);""", (chat_id, user_name))
         DB.commit()
+
+
+def button_analytic(button_title):
+    click_date = datetime.now()
+    cur = DB.cursor()
+    cur.execute("""INSERT INTO texts_for_bot_buttonanalytic(button_title, click_date)
+    VALUES(?, ?);""", (button_title, click_date))
+    DB.commit()
+
+
 
 
 if __name__ == "__main__":
