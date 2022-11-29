@@ -36,9 +36,10 @@ class PlannedMessages(models.Model):
 
 
 class ButtonAnalytic(models.Model):
+    button_id = models.CharField(max_length=10, blank=True, null=True)
     button_title = models.CharField(max_length=100)
-    click_date = models.DateTimeField()
+    click_date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.buttons_title
+        return self.button_title
 
