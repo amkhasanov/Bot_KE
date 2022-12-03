@@ -219,10 +219,6 @@ def menu(message):
 def process_step(message):
     button_title = message.text
     cursor = DB.cursor()
-    s = button_id = cursor.execute(
-        """SELECT id from texts_for_bot_buttontext 
-        WHERE title = ?;""", (message.text,)).fetchall()
-    print(s, 'button_id')
     button_id = cursor.execute(
         """SELECT id from texts_for_bot_buttontext 
         WHERE title = ?;""", (message.text,)).fetchall()[0][0]
