@@ -19,7 +19,19 @@
 		<tr><td>Дата</td> <td>Получили рассылку</td> <td>Не доставлено</td></tr>
 		</thead>
 		{% for msg in sended_msgs %}
-		<tr><td>{{msg.1}}</td><td>{{msg.3}}</td><td>{{msg.2}}</td></tr>
+		<tr><td>{{msg.1}}</td><td>{{msg.2}}</td><td>{{msg.3}}</td></tr>
 		{% endfor %}
 	</table>
+		<h1> </h1>
+		<h1>Количество нажатий кнопок из раздела "/menu"</h1>
+	{% if clicks_count %}
+    	<table border>
+			<tr> <td>Название кнопок</td><td>За день</td><td>За неделю</td><td>За месяц</td><td>Всего</td></tr>
+			{% for button_title, count in clicks_count.items %}
+			<tr><td>{{button_title}}</td><td>{{count.0}}</td><td>{{count.1}}</td><td>{{count.2}}</td><td>{{count.3}}</td></tr>
+			{% endfor %}
+		</table>
+	{% else %}
+    	<h2>Сообщений нет</h2>
+	{% endif %}
 {% endblock content%}
