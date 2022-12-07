@@ -92,7 +92,6 @@ def sched(text=None, caption=None, photo=None):
     not_sended = 0
     if text:
         for user in records:
-            print(user)
             try:
                 sended = BOT.send_message(chat_id=user[0], text=text)
                 results += 1 if sended else 0

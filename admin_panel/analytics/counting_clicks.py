@@ -1,4 +1,4 @@
-def counting_button_clicks(queryset):
+def counting_button_clicks(queryset) -> dict:
     clicks_count = {}
     for button in queryset:
         if button['button_title'] not in clicks_count.keys():
