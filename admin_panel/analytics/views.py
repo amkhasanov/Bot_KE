@@ -3,14 +3,13 @@ from datetime import datetime, timezone, timedelta
 from django.shortcuts import render
 from admin_for_bot.settings import path_to_db
 from analytics.counting_clicks import counting_button_clicks
-from texts_for_bot.models import ButtonAnalytic
+from texts_for_bot.models import ButtonAnalytic, PlannedMessages, SendedMessages
 
 DB = sqlite3.connect(path_to_db, check_same_thread=False)
 def show_admin_custom_page(request):
     cur = DB.cursor()
-    planned_msgs = cur.execute("""SELECT * from texts_for_bot_plannedmessages WHERE 
-    planned_date > datetime();""").fetchall()
-    sended_msgs = cur.execute("""SELECT * from texts_for_bot_sendedmessages;""").fetchall()
+    planned_msgs = PlannedMessages.objects.filter(planned_date__gte = datetime.now())
+    sended_msgs = SendedMessages.objects.all()
     month = timedelta(days=30)
     week = timedelta(days=7)
     one_day = timedelta(days=1)
