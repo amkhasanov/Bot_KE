@@ -21,7 +21,7 @@ def show_admin_custom_page(request):
     count_clicks_per_month = counting_button_clicks(clicks_button_per_month)
     clicks_button_per_week = clicks_per_all_time.filter(click_date__range=(per_week, end_date)).values()
     count_clicks_per_week = counting_button_clicks(clicks_button_per_week)
-    clicks_button_per_day = clicks_per_all_time.filter(click_date__range=(per_day, end_date)).values()
+    clicks_button_per_day = clicks_per_all_time.filter(click_date__date=per_day).values()
     count_clicks_per_day = counting_button_clicks(clicks_button_per_day)
     clicks_count = {}
     for button_title in count_clicks_per_all_time.keys():
