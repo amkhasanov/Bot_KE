@@ -6,7 +6,7 @@
     	<table border>
 			<tr> <td>Дата</td> <td>Текст</td> </tr>
 			{% for msg in planned_msgs %}
-			<tr><td>{{msg.1}}</td><td>{{msg.2}}</td></tr>
+			<tr><td>{{msg.planned_date}}</td><td>{{msg.planned_msg_text}}</td></tr>
 			{% endfor %}
 		</table>
 	{% else %}
@@ -19,7 +19,7 @@
 		<tr><td>Дата</td> <td>Получили рассылку</td> <td>Не доставлено</td></tr>
 		</thead>
 		{% for msg in sended_msgs %}
-		<tr><td>{{msg.1}}</td><td>{{msg.2}}</td><td>{{msg.3}}</td></tr>
+		<tr><td>{{msg.send_date}}</td><td>{{msg.success_send}}</td><td>{{msg.not_send}}</td></tr>
 		{% endfor %}
 	</table>
 		<h1> </h1>

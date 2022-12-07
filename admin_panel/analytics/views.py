@@ -3,14 +3,11 @@ from datetime import datetime, timezone, timedelta
 from django.shortcuts import render
 from admin_for_bot.settings import path_to_db
 from analytics.counting_clicks import counting_button_clicks
-from texts_for_bot.models import ButtonAnalytic
+from texts_for_bot.models import ButtonAnalytic, PlannedMessages, SendedMessages
 
-DB = sqlite3.connect(path_to_db, check_same_thread=False)
 def show_admin_custom_page(request):
-    cur = DB.cursor()
-    planned_msgs = cur.execute("""SELECT * from texts_for_bot_plannedmessages WHERE 
-    planned_date > datetime();""").fetchall()
-    sended_msgs = cur.execute("""SELECT * from texts_for_bot_sendedmessages;""").fetchall()
+    planned_msgs = PlannedMessages.objects.filter(planned_date__gte = datetime.now())
+    sended_msgs = SendedMessages.objects.all()
     month = timedelta(days=30)
     week = timedelta(days=7)
     one_day = timedelta(days=1)
@@ -28,10 +25,10 @@ def show_admin_custom_page(request):
     count_clicks_per_day = counting_button_clicks(clicks_button_per_day)
     clicks_count = {}
     for button_title in count_clicks_per_all_time.keys():
-        count_per_day = count_clicks_per_day.get('button_title', 0)
-        count_per_week = count_clicks_per_week.get('button_title', 0)
-        count_per_month = count_clicks_per_month.get('button_title', 0)
-        count_per_all_time = count_clicks_per_all_time.get('button_title', 0)
+        count_per_day = count_clicks_per_day.get(button_title, 0)
+        count_per_week = count_clicks_per_week.get(button_title, 0)
+        count_per_month = count_clicks_per_month.get(button_title, 0)
+        count_per_all_time = count_clicks_per_all_time.get(button_title, 0)
         clicks_count[button_title] = (count_per_day,
                                      count_per_week,
                                      count_per_month,
